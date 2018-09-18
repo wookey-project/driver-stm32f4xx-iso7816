@@ -1,0 +1,12 @@
+config USR_DRV_SMARTCARD
+  bool  "userspace smartcard driver abstraction, using libusart"
+  default y
+  select USR_DRV_USART
+  ---help---
+  Support for USART-based SmartCard compatible with ISO7816
+  interface.
+config USR_DRV_SMARTCARD_CFLAGS
+  string
+  default " -I../../drivers/socs/stm32f439/smartcard/api " if USR_DRV_SMARTCARD
+
+
