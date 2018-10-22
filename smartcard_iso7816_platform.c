@@ -117,6 +117,8 @@ uint8_t platform_early_gpio_init(void)
 {
   e_syscall_ret ret;
 
+  memset(&dev, 0x0, sizeof(device_t));
+
 #if CONFIG_WOOKEY // Support for pin card led indicator
   dev.gpio_num = 5;
 #else
@@ -134,6 +136,7 @@ uint8_t platform_early_gpio_init(void)
   dev.gpios[0].speed = GPIO_PIN_VERY_HIGH_SPEED;
   dev.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_BOTH;
   dev.gpios[0].exti_handler = exti_handler;
+  dev.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
 
   // RST port
   dev.gpios[1].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
@@ -172,6 +175,7 @@ uint8_t platform_early_gpio_init(void)
   dev.gpios[4].speed = GPIO_PIN_LOW_SPEED;
   dev.gpios[4].exti_trigger = GPIO_EXTI_TRIGGER_BOTH;
   dev.gpios[4].exti_handler = exti_button_handler;
+  dev.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
 #endif
 
 
