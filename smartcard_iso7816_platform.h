@@ -8,14 +8,14 @@
 #define __SMARTCARD_ISO7816_PLATFORM_H__
 
 #include "api/types.h"
-#include "api/print.h"
-#include "api/regutils.h"
 /* Low level platform related functions */
 
 /* We also use a GPIO for the RST of the smarcard */
-#include "api/syscall.h"
+#include "kernel/exported/devices.h"
 //#include "stm32f4xx_rcc.h"
 
+#include "api/print.h"
+#include "api/regutils.h"
 #include "autoconf.h"
 
 /* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is 
@@ -47,16 +47,20 @@ int platform_SC_set_inverse_conv(void);
 
 
 /* Smartcard putc and getc handling errors, with timeout in milliseconds */
+void platform_SC_flush(void);
+
 int platform_SC_getc(uint8_t *c, uint32_t timeout, uint8_t reset);
 
 int platform_SC_putc(uint8_t c, uint32_t timeout, uint8_t reset);
 
 /* Get ticks/time in milliseconds */
-unsigned long long platform_get_ticks(void);
+uint64_t platform_get_microseconds_ticks(void);
 
 void platform_SC_reinit_iso7816(void);
 
 /* shut the smartcard LED in case of communication error */
 void platform_smartcard_lost(void);
+
+void platform_smartcard_usart_reinit(void);
 
 #endif /* __SMARTCARD_ISO7816_PLATFORM_H__ */

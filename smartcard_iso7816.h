@@ -1,12 +1,12 @@
 #ifndef __SMARTCARD_ISO7816_H__
 #define __SMARTCARD_ISO7816_H__
 
-#include "api/types.h"
+#include "api/libsmartcard.h"
 
 /*** ISO7816-3 constants */
-const uint32_t F_i[16]   = { 372, 372, 558, 744, 1116, 1488, 1860, 0, 0, 512, 768, 1024, 1536, 2048, 0, 0 };
-const uint32_t f_max[16] = { 4000000, 5000000, 6000000, 8000000, 12000000, 16000000, 20000000, 0, 0, 5000000, 7500000, 10000000, 15000000, 20000000, 0, 0 };
-const uint32_t D_i[16]   = { 0, 1, 2, 4, 8, 16, 0, 0, 0, 0, (2 << 16), (4 << 16), (8 << 16), (16 << 16), (32 << 16), (64 << 16) };
+static const uint32_t F_i[16]   = { 372, 372, 558, 744, 1116, 1488, 1860, 0, 0, 512, 768, 1024, 1536, 2048, 0, 0 };
+static const uint32_t f_max[16] = { 4000000, 5000000, 6000000, 8000000, 12000000, 16000000, 20000000, 0, 0, 5000000, 7500000, 10000000, 15000000, 20000000, 0, 0 };
+static const uint32_t D_i[16]   = { 0, 1, 2, 4, 8, 16, 32, 0, 12, 20, ((uint32_t)2 << 16), ((uint32_t)4 << 16), ((uint32_t)8 << 16), ((uint32_t)16 << 16), ((uint32_t)32 << 16), ((uint32_t)64 << 16) };
 
 /********** APDU (T=0) ************************/
 /*** Short APDU Lc max length = 255 ***********/
@@ -116,14 +116,20 @@ typedef enum {
 } SC_state;
 
 /* Global variable holding the current state of the FSM */
-SC_state SC_current_state = SC_READER_IDLE;
+static SC_state SC_current_state __attribute__((used)) = SC_READER_IDLE;
 
+/***** ATR related constants ******/
 /********************************************************/
 /* ATR should appear in the 40000 clock cycles, i.e. ~110 ETU 
  * with 372 clock cycles per ETU.
  */
 #define ATR_ETU_TIMEOUT		110
 
+/* Default ATR frequency and ETU */
+#define SMARTCARD_DEFAULT_CLK_FREQ      3500000
+#define SMARTCARD_DEFAULT_ETU           372
+
+/**** Guard times and waiting times related constants ***/
 /* Here we define all the wait times we need to communicate with the
  * card, and ther default value before the ATR.
  */
@@ -132,26 +138,55 @@ SC_state SC_current_state = SC_READER_IDLE;
  * The CGT is the minimum delay between the leading
  * edges of the two consecutive characters in the same
  * direction of transmission.
+ * This is relevant for T=0 and T=1.
  */
-#define CGT_DEFAULT     0
-static unsigned int CGT_character_guard_time = CGT_DEFAULT; /* 12 ETU in total, N = 0 by default */
+#define CGT_DEFAULT	0
+static unsigned int CGT_character_guard_time __attribute__((used)) = CGT_DEFAULT; /* 12 ETU in total, N = 0 by default */
 
 /*
  * The WT is the maximum delay allowed between two
  * consecutive characters transmitted by the card or an
- * interfacing device. 
+ * interfacing device. Only relevant for T=0.
  */
-#define WT_DEFAULT      9600
-static unsigned int WT_wait_time = WT_DEFAULT; /* 9600 ETU by default */
+/* NOTE: since our lower layer only triggers a successful reception *after*
+ * a full byte reception, it is hard to detect the leading edge of the next full byte since
+ * it is being received. Hence, in order for our CWT to fully work, we instead use the more
+ * conservative "two bytes detection" and add to the standard duration 14 ETU since our current
+ * layer will detect the detection only after the byte has been fully receive.
+ * (14 ETU = 12 ETU for reception + guard time + 2 ETU for conservative value)
+ */
+#define WT_DEFAULT	((9600) + 14)
+static unsigned int WT_wait_time __attribute__((used)) = WT_DEFAULT; /* 9600 ETU by default, (960 x D x WI) ETU with WI=10 by default */
 
-#define BGT_DEFAULT     22
-static unsigned int BGT_block_guard_time = BGT_DEFAULT; /* 22 ETU by default */
+/* Block guard time, only relevant for T=1 */
+#define BGT_DEFAULT	22
+static unsigned int BGT_block_guard_time __attribute__((used)) = BGT_DEFAULT; /* 22 ETU by default */
 
-#define CWT_DEFAULT     (0x1 << 13)
-static unsigned int CWT_character_wait_time __attribute__((unused)) = CWT_DEFAULT; /* Default value of CWT (CWI is 13 by default) */
+/* The Character Wait Time, maximum time between two characters leading edge in a block.
+ * Only relevant for T=1.
+ */
+/* NOTE: since our lower layer only triggers a successful reception *after*
+ * a full byte reception, it is hard to detect the leading edge of the next full byte since
+ * it is being received. Hence, in order for our CWT to fully work, we instead use the more
+ * conservative "two bytes detection" and add to the standard duration 14 ETU since our current
+ * layer will detect the detection only after the byte has been fully receive.
+ * (14 ETU = 12 ETU for reception + guard time + 2 ETU for conservative value)
+ */
+#define CWT_DEFAULT	((11 + (0x1 << 13)) + 14)
+static unsigned int CWT_character_wait_time __attribute__((used)) = CWT_DEFAULT; /* Default value of CWT (CWI is 13 by default) */
 
-#define BWT_DEFAULT     (0x1 << 4)
-static unsigned int BWT_block_wait_time = BWT_DEFAULT; /* Default value of BWT (BWI is 4 by default) */
+/* The Block Wait Time, maximum time between two blocks in the same direction
+ * from the card to the terminal. Only relevant for T=1.
+ */
+/* NOTE: since our lower layer only triggers a successful reception *after*
+ * a full byte reception, it is hard to detect the leading edge of the next full byte since
+ * it is being received. Hence, in order for our CWT to fully work, we instead use the more
+ * conservative "two bytes detection" and add to the standard duration 14 ETU since our current
+ * layer will detect the detection only after the byte has been fully receive.
+ * (14 ETU = 12 ETU for reception + guard time + 2 ETU for conservative value)
+ */
+#define BWT_DEFAULT	((11 + ((0x1 << 4) * 960)) + 14)
+static unsigned int BWT_block_wait_time __attribute__((used)) = BWT_DEFAULT; /* Default value of BWT (BWI is 4 by default) */
 
 /* Number of clock cycles to wait before raising the
  * RST pin.
@@ -161,5 +196,13 @@ static unsigned int BWT_block_wait_time = BWT_DEFAULT; /* Default value of BWT (
 /* Some ISO7816-4 useful instructions */
 #define INS_GET_RESPONSE	0xc0
 #define INS_ENVELOPE		0xc2
+
+void SC_iso7816_print_ATR(SC_ATR *atr);
+int SC_iso7816_fsm_init(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotiate_pts, uint8_t do_change_baudrate, uint8_t do_force_protocol, uint32_t do_force_etu);
+int SC_iso7816_send_APDU(SC_APDU_cmd *apdu, SC_APDU_resp *resp, SC_ATR *atr, uint8_t T_protocol);
+int SC_iso7816_fsm_early_init(void);
+void SC_iso7816_smartcard_lost(void);
+uint8_t SC_iso7816_is_smartcard_inserted(void);
+int SC_iso7816_wait_card_timeout(SC_ATR *atr, uint8_t T_protocol);
 
 #endif /* __SMARTCARD_ISO7816_H__ */

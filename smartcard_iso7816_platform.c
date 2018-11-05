@@ -1,9 +1,9 @@
 #include "api/syscall.h"
-#include "api/types.h"
 #include "kernel/exported/devices.h"
 #include "api/libusart_regs.h"
 #include "api/libusart.h"
 #include "smartcard_iso7816_platform.h"
+#include "api/semaphore.h"
 
 /* The target clock frequency is 3.5MHz for the ATR < max 5MHz.
  * The advantage of this frequency is that it is a perfect divisor of
@@ -80,7 +80,7 @@ static usart_config_t smartcard_usart_config = {
         /* To be filled later depending on the clock configuration */
         .guard_time_prescaler = 0,
 
-        /* Reception callback */
+        /* Send/Receive/Error IRQ callback */
         .callback_irq_handler = platform_smartcard_irq,
 
         /* Receive and send function pointers */
@@ -98,7 +98,7 @@ void exti_button_handler(uint8_t irq __attribute__((unused)),
                   uint32_t status __attribute__((unused)),
                   uint32_t data __attribute__((unused)))
 {
-    exti_butt_count++;
+ 	exti_butt_count++;
 }
 
 
@@ -110,15 +110,14 @@ void exti_handler(uint8_t irq __attribute__((unused)),
                   uint32_t data __attribute__((unused)))
 {
 	platform_SC_gpio_smartcard_contact_changed = 1;
-    return;
+	return;
 }
 
 uint8_t platform_early_gpio_init(void)
 {
   e_syscall_ret ret;
 
-  memset(&dev, 0x0, sizeof(device_t));
-
+  strncpy(dev.name, "smart_gpios", sizeof("smart_gpios"));
 #if CONFIG_WOOKEY // Support for pin card led indicator
   dev.gpio_num = 5;
 #else
@@ -136,7 +135,6 @@ uint8_t platform_early_gpio_init(void)
   dev.gpios[0].speed = GPIO_PIN_VERY_HIGH_SPEED;
   dev.gpios[0].exti_trigger = GPIO_EXTI_TRIGGER_BOTH;
   dev.gpios[0].exti_handler = exti_handler;
-  dev.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
 
   // RST port
   dev.gpios[1].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
@@ -175,11 +173,13 @@ uint8_t platform_early_gpio_init(void)
   dev.gpios[4].speed = GPIO_PIN_LOW_SPEED;
   dev.gpios[4].exti_trigger = GPIO_EXTI_TRIGGER_BOTH;
   dev.gpios[4].exti_handler = exti_button_handler;
-  dev.gpios[0].exti_lock = GPIO_EXTI_UNLOCKED;
 #endif
 
 
   ret = sys_init(INIT_DEVACCESS, &dev, &dev_desc);
+  if (ret != 0) {
+      printf("Error while declaring GPIO device: %d\n", ret);
+  }
   return ret;
 }
 
@@ -207,6 +207,9 @@ uint8_t platform_early_usart_init(void)
 {
   uint8_t ret = 0;
   ret = usart_early_init(&smartcard_usart_config);
+  if (ret != 0) {
+      printf("Error while early init of USART: %d\n", ret);
+  }
   return ret;
 }
 
@@ -228,11 +231,11 @@ uint8_t platform_is_smartcard_inserted(void)
 
         if(platform_SC_gpio_smartcard_contact_changed == 1){
 
-            sys_get_systick(&count, PREC_MILLI);
+            sys_get_systick(&count, PREC_MICRO);
             local_count = count;
             do {
-                sys_get_systick(&local_count, PREC_MILLI);
-            } while ((local_count - count) < 100);
+                sys_get_systick(&local_count, PREC_MICRO);
+            } while (((local_count - count) / 1000) < 100);
 
             ret = sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), &val);
             if (ret != SYS_E_DONE) {
@@ -294,7 +297,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
                 *target_freq = i;
         }
 
-        printf("Rounding target freguency to %x\n", target_freq);
+        printf("Rounding target freguency to %d\n", *target_freq);
 
         /* Then, compute the baudrate depending on the target frequency */
         /* Baudrate is the clock frequency divided by one ETU (372 ticks by default, possibly negotiated). 
@@ -325,18 +328,18 @@ int platform_smartcard_early_init(void)
 {
   // TODO check the return values
 	/* Initialize the GPIOs */
-    uint8_t ret = 0;
-    if ((ret = platform_early_gpio_init()) != SYS_E_DONE) {
-        goto gpio_err;
-    }
+	uint8_t ret = 0;
+	if ((ret = platform_early_gpio_init()) != SYS_E_DONE) {
+		goto gpio_err;
+	}
 	if ((ret = platform_early_usart_init()) != SYS_E_DONE) {
-        goto usart_err;
-    }
-    return 0;
+        	goto usart_err;
+	}
+	return 0;
 gpio_err:
-    return 1;
+	return 1;
 usart_err:
-    return 2;
+	return 2;
 }
 
 int platform_smartcard_init(void){
@@ -347,11 +350,16 @@ int platform_smartcard_init(void){
 
 	/* Initialize the USART in smartcard mode */
 	printf("==> Enable USART%d in smartcard mode!\n", smartcard_usart_config.usart);
-    usart_init(&smartcard_usart_config);
+ 	usart_init(&smartcard_usart_config);
 	return 0;
 }
 
+void platform_smartcard_usart_reinit(void){
+	usart_disable(&smartcard_usart_config);
+	usart_enable(&smartcard_usart_config);
 
+	return;
+}
 
 /* Adapt clocks and guard time depending on what has been received */
 int platform_SC_adapt_clocks(uint32_t *etu, uint32_t *frequency){
@@ -382,7 +390,19 @@ err:
  */
 static volatile uint8_t dummy_usart_read = 0;
 
-static void platform_smartcard_irq(uint32_t status, uint32_t data){
+/* The following buffer is a circular buffer holding the received bytes when
+ * an asynchronous burst of ISRs happens (i.e. when sending/receiving many bytes
+ * in a short time slice).
+ */
+static uint8_t received_SC_bytes[64];
+volatile unsigned int received_SC_bytes_start = 0;
+volatile unsigned int received_SC_bytes_end   = 0;
+/* The mutex for handling the reception ring buffer between ISR and main thread */
+static volatile uint32_t SC_mutex;
+
+volatile unsigned int received = 0;
+
+static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint32_t data){
 	/* Check if we have a parity error */
 	if ((get_reg(&status, USART_SR_PE)) && (platform_SC_pending_send_byte != 0)) {
 		/* Parity error, program a resend */
@@ -411,11 +431,41 @@ static void platform_smartcard_irq(uint32_t status, uint32_t data){
 
 	/* We can actually read data */
 	if (get_reg(&status, USART_SR_RXNE)){
-		platform_SC_byte = data & 0xff;
-		if(platform_SC_pending_send_byte == 0){
-			platform_SC_pending_receive_byte = 1;
+		/* We are in our sending state, no need to treceive anything */
+		if(platform_SC_pending_send_byte != 0){
+			return;
 		}
-        status = status;
+		/* Lock the mutex */
+		if(!semaphore_trylock(&SC_mutex)){
+			/* We should not be blocking when locking the mutex since we are in ISR mode!
+			 * This means that we will miss bytes here ... But this is better than corrupting our
+			 * reception ring buffer!
+			 */
+			return;
+		}
+
+		/* Check if we overflow */
+		/* We have no more room to store bytes, just give up ... and 
+		 * drop the current byte
+		 */
+		if(((received_SC_bytes_end + 1) % sizeof(received_SC_bytes)) == received_SC_bytes_start){
+			/* Unlock the mutex */
+			while(!semaphore_release(&SC_mutex)){
+				continue;
+			}
+			dummy_usart_read = data & 0xff;
+			return;	
+		}
+		received_SC_bytes[received_SC_bytes_end] = data & 0xff;
+		/* Wrap up our ring buffer */
+		received_SC_bytes_end = (received_SC_bytes_end + 1) % sizeof(received_SC_bytes);
+		platform_SC_pending_receive_byte = 1;
+
+		/* Unlock the mutex */
+		while(!semaphore_release(&SC_mutex)){
+			continue;
+		}
+
 		return;
 	}
 
@@ -452,31 +502,41 @@ int platform_SC_set_inverse_conv(void){
 	/* Get the pending byte again (with 9600 ETU at 372 timeout) to send the proper
 	 * parity ACK to the card and continue to the next bytes ...
 	 */
-	t = ((uint64_t)9600 * 372 * 1000) / 3500000;
-        start_tick = platform_get_ticks();
+        t = ((uint64_t)9600 * 372 * 1000) / 3500000;
+        start_tick = platform_get_microseconds_ticks();
         curr_tick = start_tick;
 	while(platform_SC_getc((uint8_t*)&dummy_usart_read, 0, 0)){
 		if((curr_tick - start_tick) > t){
 			goto err;
 		}
+		curr_tick = platform_get_microseconds_ticks();
 	}
 
 	return 0;
 
 err:
-
 	return -1;
 }
 
-/* Low level char PUSH/POP functions */
-static inline uint8_t platform_SC_char_pop(void){
-	return platform_SC_byte;
-}
-static inline void platform_SC_char_push(uint8_t c){
-	(*r_CORTEX_M_USART_DR(SMARTCARD_USART)) = c;
-	return;
+/* Low level flush of our receive/send state, in order
+ * for the higher level to be sure that everything is clean
+ */
+void platform_SC_flush(void){
+	/* Flushing the receive/send state is only a matter of cleaning
+	 * our ring buffer!
+	 */
+	/* Lock the mutex */
+	while(!semaphore_trylock(&SC_mutex)){
+		continue;
+	}
+	platform_SC_pending_receive_byte = platform_SC_pending_send_byte = 0;
+	received_SC_bytes_start = received_SC_bytes_end = 0;
+	while(!semaphore_release(&SC_mutex)){
+		continue;
+	}
 }
 
+/* Low level char PUSH/POP functions */
 /* Smartcard putc and getc handling errors: 
  * The getc function is non blocking */
 int platform_SC_getc(uint8_t *c,
@@ -488,14 +548,37 @@ int platform_SC_getc(uint8_t *c,
 	if(platform_SC_pending_receive_byte != 1){
 		return -1;
 	}
+	/* Lock the mutex */
+	while(!semaphore_trylock(&SC_mutex)){
+		continue;
+	}
+
+	/* Read our ring buffer to check if something is ready */
+	if(received_SC_bytes_start == received_SC_bytes_end){
+		/* Ring buffer is empty */
+		/* Unlock the mutex */
+		while(!semaphore_release(&SC_mutex)){
+			continue;
+		}
+		return -1;
+	}
 	/* Data is ready, go ahead */
-	*c = platform_SC_char_pop();
-	platform_SC_pending_receive_byte = 0;
+	*c = received_SC_bytes[received_SC_bytes_start];
+	/* Wrap up our ring buffer */
+	received_SC_bytes_start = (received_SC_bytes_start + 1) % sizeof(received_SC_bytes);
+	/* Tell that there is no more byte when our ring buffer is empty */
+	if(received_SC_bytes_start == received_SC_bytes_end){
+		platform_SC_pending_receive_byte = 0;
+	}
+	/* Unlock the mutex */
+	while(!semaphore_release(&SC_mutex)){
+		continue;
+	}
 
 	return 0;
 }
 
-/* The putc function is blocking until the byte is sent, and checks
+/* The putc function is non-blocking and checks
  * for errors. In the case of errors, try to send the byte again.
  */
 int platform_SC_putc(uint8_t c,
@@ -507,7 +590,8 @@ int platform_SC_putc(uint8_t c,
 	}
 	if((platform_SC_pending_send_byte == 0) || (platform_SC_pending_send_byte >= 3)){
 		platform_SC_pending_send_byte = 1;
-		platform_SC_char_push(c);
+		/* Push the byte on the line */
+		(*r_CORTEX_M_USART_DR(SMARTCARD_USART)) = c;
 		return -1;
 	}
 	if(platform_SC_pending_send_byte == 2){
@@ -519,10 +603,10 @@ int platform_SC_putc(uint8_t c,
 	return -1;
 }
 
-/* Get ticks/time in milliseconds */
-uint64_t platform_get_ticks(void){
-    uint64_t tick = 0;
-	sys_get_systick(&tick, PREC_MILLI);
+/* Get ticks/time in microseconds */
+uint64_t platform_get_microseconds_ticks(void){
+	uint64_t tick = 0;
+	sys_get_systick(&tick, PREC_MICRO);
 	return tick;
 }
 
@@ -532,9 +616,11 @@ void platform_SC_reinit_iso7816(void){
 	platform_SC_pending_send_byte = 0;
 	platform_SC_byte = 0;
 	dummy_usart_read = 0;
-    sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
-    platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
+	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
+	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
 	platform_SC_gpio_smartcard_contact_changed = 0;
-    return;
+	received_SC_bytes_start = received_SC_bytes_end = 0;
+	semaphore_init(1, &SC_mutex);
+	return;
 }
 
