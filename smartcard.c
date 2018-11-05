@@ -3,6 +3,9 @@
 /* TODO: add ISO14443 layer header here when it is implemented */
 #include "api/libsmartcard.h"
 
+/* Handling the debug output */
+#include "smartcard_print.h"
+
 /*** The following two functions help APDU fragmentation across multiple
  *   units (envelopes in T=0 and blocks in T=1, blocks for ISO14443 card, ...).
  */
@@ -209,36 +212,36 @@ void SC_print_APDU(SC_APDU_cmd *apdu)
 
         /* Sanity check on length */
         if(apdu->lc > APDU_MAX_BUFF_LEN){
-                printf("[Smartcard] SC_print_APDU error: length %d overflow\n", apdu->lc);
+                log_printf("[Smartcard] SC_print_APDU error: length %d overflow\n", apdu->lc);
                 return;
         }
-        printf("===== APDU ============\n");
-        printf("CLA = %x, INS = %x, P1 = %x, P2 = %x", apdu->cla, apdu->ins, apdu->p1, apdu->p2);
+        log_printf("===== APDU ============\n");
+        log_printf("CLA = %x, INS = %x, P1 = %x, P2 = %x", apdu->cla, apdu->ins, apdu->p1, apdu->p2);
         if(apdu->lc != 0){
-                printf(", Lc = %x", apdu->lc);
+                log_printf(", Lc = %x", apdu->lc);
                 if(apdu->lc > 255){
-                        printf(" (extended)");
+                        log_printf(" (extended)");
                 }
         }
         else{
-                printf(", No Lc");
+                log_printf(", No Lc");
 
         }
         if(apdu->send_le != 0){
-                printf(", Le = %x", apdu->le);
+                log_printf(", Le = %x", apdu->le);
                 if((apdu->le > 256) || (apdu->send_le == 2)){
-                        printf(" (extended)");
+                        log_printf(" (extended)");
                 }
         }
         else{
-                printf(", No Le");
+                log_printf(", No Le");
         }
-        printf("\n");
+        log_printf("\n");
         for(i = 0; i < apdu->lc; i++){
-                printf("%x ", apdu->data[i]);
+                log_printf("%x ", apdu->data[i]);
         }
         if(apdu->lc != 0){
-                printf("\n");
+                log_printf("\n");
         }
 
         return;
@@ -256,16 +259,16 @@ void SC_print_RESP(SC_APDU_resp *resp)
 
         /* Sanity check on length */
         if(resp->le > APDU_MAX_BUFF_LEN){
-                printf("[Smartcard] SC_print_RESP error: length %d overflow\n", resp->le);
+                log_printf("[Smartcard] SC_print_RESP error: length %d overflow\n", resp->le);
                 return;
         }
-        printf("===== RESP ============\n");
-        printf("SW1 = %x, SW2 = %x, Le = %x\n", resp->sw1, resp->sw2, resp->le);
+        log_printf("===== RESP ============\n");
+        log_printf("SW1 = %x, SW2 = %x, Le = %x\n", resp->sw1, resp->sw2, resp->le);
         for(i = 0; i < resp->le; i++){
-                printf("%x ", resp->data[i]);
+                log_printf("%x ", resp->data[i]);
         }
         if(resp->le != 0){
-                printf("\n");
+                log_printf("\n");
         }
 
         return;
@@ -279,14 +282,14 @@ void SC_print_Card(SC_Card *card)
 	}
         switch(card->type){
                 case SMARTCARD_CONTACT:
-		        printf("===== Contact Card ============\n");
-		        printf("Protocol is T = %x\n", card->T_protocol);
+		        log_printf("===== Contact Card ============\n");
+		        log_printf("Protocol is T = %x\n", card->T_protocol);
                         SC_iso7816_print_ATR(&(card->info.atr));
                         break;
                 case SMARTCARD_NFC:
                 case SMARTCARD_UNKNOWN:
                 default:
-                        printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
+                        log_printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
                         goto err;
         }
 
@@ -308,7 +311,7 @@ int SC_send_APDU(SC_APDU_cmd *apdu, SC_APDU_resp *resp, SC_Card *card){
                 case SMARTCARD_NFC:
                 case SMARTCARD_UNKNOWN:
                 default:
-                        printf("[Smartcard] Send APDU: Unsupported asked smartcard type %d\n", card->type);
+                        log_printf("[Smartcard] Send APDU: Unsupported asked smartcard type %d\n", card->type);
                         goto err;
         }
 
@@ -359,7 +362,7 @@ void SC_smartcard_lost(SC_Card *card){
                 case SMARTCARD_NFC:
                 case SMARTCARD_UNKNOWN:
                 default:
-                        printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
+                        log_printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
                         goto err;
         }
 
@@ -380,7 +383,7 @@ uint8_t SC_is_smartcard_inserted(SC_Card *card){
                 case SMARTCARD_NFC:
                 case SMARTCARD_UNKNOWN:
                 default:
-                        printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
+                        log_printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
                         goto err;
         }
 
@@ -403,7 +406,7 @@ int SC_wait_card_timeout(SC_Card *card){
                 case SMARTCARD_NFC:
                 case SMARTCARD_UNKNOWN:
                 default:
-                        printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
+                        log_printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
                         goto err;
         }
 

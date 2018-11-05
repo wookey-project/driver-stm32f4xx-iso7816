@@ -10,7 +10,6 @@
 #include "api/libusart.h"
 #include "api/libusart_regs.h"
 
-
 static volatile uint32_t SC_current_sc_frequency = SMARTCARD_DEFAULT_CLK_FREQ;
 /* Get the current smartcard configured frequency */
 static uint32_t SC_get_sc_clock_freq(void){
@@ -274,7 +273,7 @@ int SC_get_ATR(SC_ATR *atr){
 		}
 		/* Check the checksum */
 		if(checksum != atr->tck){
-			printf("Smartcard ATR checksum error ...\n");
+			log_printf("Smartcard ATR checksum error ...\n");
 			goto err;
 		}
 	}
@@ -293,35 +292,35 @@ void SC_iso7816_print_ATR(SC_ATR *atr)
 		return;
 	}
 
-	printf("===== ATR ============\n");
-	printf("TS = %x, T0 = %x\n", atr->ts, atr->t0);
+	log_printf("===== ATR ============\n");
+	log_printf("TS = %x, T0 = %x\n", atr->ts, atr->t0);
 	for(i = 0; i < 4; i++){
 		if(atr->t_mask[0] & (0x1 << i)){
-			printf("TA[%d] = %x\n", i, atr->ta[i]);
+			log_printf("TA[%d] = %x\n", i, atr->ta[i]);
 		}
 	}
 	for(i = 0; i < 4; i++){
 		if(atr->t_mask[1] & (0x1 << i)){
-			printf("TB[%d] = %x\n", i, atr->tb[i]);
+			log_printf("TB[%d] = %x\n", i, atr->tb[i]);
 		}
 	}
 	for(i = 0; i < 4; i++){
 		if(atr->t_mask[2] & (0x1 << i)){
-			printf("TC[%d] = %x\n", i, atr->tc[i]);
+			log_printf("TC[%d] = %x\n", i, atr->tc[i]);
 		}
 	}
 	for(i = 0; i < 4; i++){
 		if(atr->t_mask[3] & (0x1 << i)){
-			printf("TD[%d] = %x\n", i, atr->td[i]);
+			log_printf("TD[%d] = %x\n", i, atr->td[i]);
 		}
 	}
 	for(i = 0; i < (atr->h_num & 0x0f); i++){
-		printf("H[%d] = %x\n", i, atr->h[i]);
+		log_printf("H[%d] = %x\n", i, atr->h[i]);
 	}
 	if(atr->tck_present){
-		printf("TCK = %x\n", atr->tck);
+		log_printf("TCK = %x\n", atr->tck);
 	}
-        printf("F=%d, D=%d, fmax=%d\n", atr->F_i_curr, atr->D_i_curr, atr->f_max_curr);
+        log_printf("F=%d, D=%d, fmax=%d\n", atr->F_i_curr, atr->D_i_curr, atr->f_max_curr);
 
 	return;
 }
@@ -350,12 +349,12 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 	/* Check TA2 to see if we cannot negotiate */
 	if(atr->t_mask[0] & (0x1 << 1)){
 		/* The card supports specific mode */
-		printf("[Smartcard] TA2 present, implies specific mode\n");
+		log_printf("[Smartcard] TA2 present, implies specific mode\n");
 		negotiable_mode = 0;
 	}
 	else{
 		/* The card supports negotiable mode */
-		printf("[Smartcard] TA2 absent, implies negotiable mode\n");
+		log_printf("[Smartcard] TA2 absent, implies negotiable mode\n");
 		negotiable_mode = 1;
 	}
 
@@ -378,13 +377,13 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		*T_protocol = td1 & 0x0f;
 		if((*T_protocol != 0) && (*T_protocol != 1)){
 			/* We do not support T=15 or protocols other than T=0/T=1 */
-			printf("[Smartcard] Asking for unsupported protocol T=%d\n", *T_protocol);
+			log_printf("[Smartcard] Asking for unsupported protocol T=%d\n", *T_protocol);
 			goto err;
 		}
 	}
 	if(do_force_protocol){
 		if(do_force_protocol > 2){
-			printf("[Smartcard] Asking for unsupported *user forced* protocol T=%d\n", (do_force_protocol - 1));
+			log_printf("[Smartcard] Asking for unsupported *user forced* protocol T=%d\n", (do_force_protocol - 1));
 			goto err;
 		}
 		*T_protocol = (do_force_protocol - 1);
@@ -399,12 +398,12 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 
 		/* Is the using forcing a specific ETU? */
 		if(do_force_etu){
-			printf("[Smartcard] Current maximum Fi=%d, Di=%d, ETU=%d, user asked for %d ...\n", atr->F_i_curr, atr->D_i_curr, atr->F_i_curr / atr->D_i_curr, do_force_etu);
+			log_printf("[Smartcard] Current maximum Fi=%d, Di=%d, ETU=%d, user asked for %d ...\n", atr->F_i_curr, atr->D_i_curr, atr->F_i_curr / atr->D_i_curr, do_force_etu);
 			/* Find a suitable ETU with Fi and the possible values of Di */
 			unsigned int i = ta1 & 0x0f;
 			while(1){
 				if(i == 0){
-					printf("[Smartcard] Error: forcing ETU to %d failed ...\n", do_force_etu);
+					log_printf("[Smartcard] Error: forcing ETU to %d failed ...\n", do_force_etu);
 					goto err;
 				}
 				if(D_i[i] != 0){
@@ -429,12 +428,12 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 				}
 			}
 			atr->D_i_curr = D_i[i];
-			printf("[Smartcard] Trying Fi=%d, Di=%d, ETU=%d as the best choice compared to asked %d\n", atr->F_i_curr, atr->D_i_curr, atr->F_i_curr / atr->D_i_curr, do_force_etu);
+			log_printf("[Smartcard] Trying Fi=%d, Di=%d, ETU=%d as the best choice compared to asked %d\n", atr->F_i_curr, atr->D_i_curr, atr->F_i_curr / atr->D_i_curr, do_force_etu);
 		}
 
 		/* If the card is asking for a forbidden value, return */
 		if((atr->D_i_curr == 0) || (atr->F_i_curr == 0) || (atr->f_max_curr == 0)){
-			printf("[Smartcard] PSS/PTS error (asking for impossible Fi = %d and/or Di = %d)\n", atr->F_i_curr, atr->D_i_curr);
+			log_printf("[Smartcard] PSS/PTS error (asking for impossible Fi = %d and/or Di = %d)\n", atr->F_i_curr, atr->D_i_curr);
 			goto err;
 		}
 		/* Compute our new ETU */
@@ -450,7 +449,7 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		 */
 		/* In specific mode, we change the Baudrate *before* sending the PPS */
 		if(negotiable_mode == 0){
-			printf("[Smartcard] Switching to ETU = %d (Di = %d, Fi = %d), guard time = %d, max_frequency = %d, Protocol T=%d\n", etu_curr, atr->D_i_curr, atr->F_i_curr, extra_guard_time, atr->f_max_curr, *T_protocol);
+			log_printf("[Smartcard] Switching to ETU = %d (Di = %d, Fi = %d), guard time = %d, max_frequency = %d, Protocol T=%d\n", etu_curr, atr->D_i_curr, atr->F_i_curr, extra_guard_time, atr->f_max_curr, *T_protocol);
 			if(SC_adapt_clocks(etu_curr, atr->f_max_curr)){
 				goto err;
 			}		
@@ -475,7 +474,7 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 					/* [RB] TODO: specify a new 'platform' specific call to handle guard time of 1 ETU on
 					 * platforms that handle it, or return an error on platforms that don't.
 					 */
-					printf("[Smartcard] PSS/PTS error: TC1=0xff for T=1 means unsupported ETU=1 ...\n");
+					log_printf("[Smartcard] PSS/PTS error: TC1=0xff for T=1 means unsupported ETU=1 ...\n");
 					goto err;
 				}
 				else{
@@ -497,13 +496,13 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		pck = 0;
 		/* Send PTSS */
 		if(SC_putc_timeout(0xff, WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (PSS byte 0xff)\n");
+			log_printf("[Smartcard] PSS/PTS error (PSS byte 0xff)\n");
 			goto err;
 		}
 		pck ^= 0xff;
 		/* Send PTS0 telling that we will apply new Fi/Di (PTS1) and new guard time (PTS2) */
 		if(SC_putc_timeout((asked_ta1 << 4) | (asked_tc1 << 5) | (*T_protocol), WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (byte PTS0)\n");
+			log_printf("[Smartcard] PSS/PTS error (byte PTS0)\n");
 			goto err;
 		}
 		pck ^= (asked_ta1 << 4) | (asked_tc1 << 5) | (*T_protocol);
@@ -524,14 +523,14 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 					}
 				}
 				if(SC_putc_timeout(new_baud_rate, WT_wait_time)){
-					printf("[Smartcard] PSS/PTS error (byte PTS1)\n");
+					log_printf("[Smartcard] PSS/PTS error (byte PTS1)\n");
 					goto err;
 				}
 				pck ^= new_baud_rate;
 			}
 			else{
 				if(SC_putc_timeout(default_ta1, WT_wait_time)){
-					printf("[Smartcard] PSS/PTS error (byte PTS1)\n");
+					log_printf("[Smartcard] PSS/PTS error (byte PTS1)\n");
 					goto err;
 				}
 				pck ^= default_ta1;
@@ -540,50 +539,50 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		/* Send PTS2 if necessary */
 		if(asked_tc1){
 			if(SC_putc_timeout(atr->tc[0], WT_wait_time)){
-				printf("[Smartcard] PSS/PTS error (byte PTS2)\n");
+				log_printf("[Smartcard] PSS/PTS error (byte PTS2)\n");
 				goto err;
 			}
 			pck ^= atr->tc[0];
 		}
 		/* Send the checksum */
 		if(SC_putc_timeout(pck, WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (byte PTS checksum)\n");
+			log_printf("[Smartcard] PSS/PTS error (byte PTS checksum)\n");
 			goto err;
 		}
 		/* Now check that the card agrees to our PTS */
 		/* Check for PSS = 0xff */
 		if(SC_getc_timeout(&c, WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (0xff ACK error in receive)\n");
+			log_printf("[Smartcard] PSS/PTS error (0xff ACK error in receive)\n");
 			goto err;
 		}
 		if(c != 0xff){
-			printf("[Smartcard] PSS/PTS error (0xff ACK error, values differ)\n");
+			log_printf("[Smartcard] PSS/PTS error (0xff ACK error, values differ)\n");
 			goto err;
 		}
 		/* Check for PTS0 */
 		if(SC_getc_timeout(&c, WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (PTS0 ACK error in receive)\n");
+			log_printf("[Smartcard] PSS/PTS error (PTS0 ACK error in receive)\n");
 			goto err;
 		}
 		if(c != ((asked_ta1 << 4) | (asked_tc1 << 5) | (*T_protocol))){
-			printf("[Smartcard] PSS/PTS error (PTS0 ACK error, values differ)\n");
+			log_printf("[Smartcard] PSS/PTS error (PTS0 ACK error, values differ)\n");
 			goto err;
 		}
 		/* Optionally check for PTS1 */
 		if(asked_ta1){
 			if(SC_getc_timeout(&c, WT_wait_time)){
-				printf("[Smartcard] PSS/PTS error (PTS1 ACK error in receive)\n");
+				log_printf("[Smartcard] PSS/PTS error (PTS1 ACK error in receive)\n");
 				goto err;
 			}
 			if(do_change_baud_rate){
 				if(c != new_baud_rate){
-					printf("[Smartcard] PSS/PTS error (PTS1 ACK error, values differ)\n");
+					log_printf("[Smartcard] PSS/PTS error (PTS1 ACK error, values differ)\n");
 					goto err;
 				}
 			}
 			else{
 				if(c != default_ta1){
-					printf("[Smartcard] PSS/PTS error (PTS1 ACK error, values differ)\n");
+					log_printf("[Smartcard] PSS/PTS error (PTS1 ACK error, values differ)\n");
 					goto err;
 				}
 			}
@@ -591,24 +590,24 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		/* Optionally check for PTS2 */
 		if(asked_tc1){
 			if(SC_getc_timeout(&c, WT_wait_time)){
-				printf("[Smartcard] PSS/PTS error (PTS2 ACK error in receive)\n");
+				log_printf("[Smartcard] PSS/PTS error (PTS2 ACK error in receive)\n");
 				goto err;
 			}
 			if(c != atr->tc[0]){
-				printf("[Smartcard] PSS/PTS error (PTS2 ACK error, values differ)\n");
+				log_printf("[Smartcard] PSS/PTS error (PTS2 ACK error, values differ)\n");
 				goto err;
 			}
 		}
 		/* Check for the PCK checksum */
 		if(SC_getc_timeout(&c, WT_wait_time)){
-			printf("[Smartcard] PSS/PTS error (PTS checksum ACK error in receive)\n");
+			log_printf("[Smartcard] PSS/PTS error (PTS checksum ACK error in receive)\n");
 			goto err;
 		}
 		if(c != pck){
-			printf("[Smartcard] PSS/PTS error (PTS checksum ACK error, values differ)\n");
+			log_printf("[Smartcard] PSS/PTS error (PTS checksum ACK error, values differ)\n");
 			goto err;
 		}
-		printf("[Smartcard] PSS/PTS success: PTS sent and confirmed by the card!\n");
+		log_printf("[Smartcard] PSS/PTS success: PTS sent and confirmed by the card!\n");
 	}
 
 	if(do_change_baud_rate){
@@ -631,7 +630,7 @@ static int SC_negotiate_PTS(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negotia
 		/* Set the USART clocks to the new settings if it is not already done yet.
 		 */
 		if(negotiable_mode == 1){
-			printf("[Smartcard] Switching to ETU = %d (Di = %d, Fi = %d), guard time = %d, max_frequency = %d, Protocol T=%d\n", etu_curr, atr->D_i_curr, atr->F_i_curr, extra_guard_time, atr->f_max_curr, *T_protocol);
+			log_printf("[Smartcard] Switching to ETU = %d (Di = %d, Fi = %d), guard time = %d, max_frequency = %d, Protocol T=%d\n", etu_curr, atr->D_i_curr, atr->F_i_curr, extra_guard_time, atr->f_max_curr, *T_protocol);
 			if(SC_adapt_clocks(etu_curr, atr->f_max_curr)){
 				goto err;
 			}
@@ -817,7 +816,7 @@ static int SC_push_pull_APDU_T0(SC_T0_APDU_cmd *apdu, SC_T0_APDU_resp *resp){
 	 * As a result, we return an error here if we have a case 4 APDU.
 	 */
 	if((apdu->send_le != 0) && (apdu->lc != 0)){
-		printf("[Smartcard] T=0 case 4 APDU not fragmented ...\n");
+		log_printf("[Smartcard] T=0 case 4 APDU not fragmented ...\n");
 		goto err;
 	}
 
@@ -1583,7 +1582,7 @@ static int SC_send_APDU_T1(SC_APDU_cmd *apdu, SC_APDU_resp *resp, SC_ATR *atr){
 			}
 		}
 		if((atr->ifsc == 0) || (atr->ifsc == 255)){
-			printf("[Smartcard T=1] Bad value for IFSC in TAi = %d\n", atr->ifsc);
+			log_printf("[Smartcard T=1] Bad value for IFSC in TAi = %d\n", atr->ifsc);
 			goto err;
 		}
 	}
@@ -1677,7 +1676,7 @@ RECEIVE_TPDU_AGAIN_CMD:
 					goto SEND_TPDU_AGAIN_CMD;
 				}
 				/* Unexpected error */
-				printf("[Smartcard T=1] Unexpected case: received error block with bad sequence number ...\n");
+				log_printf("[Smartcard T=1] Unexpected case: received error block with bad sequence number ...\n");
 				goto err;
 			}
 			/* Check that this is the ACK we are waiting for */
@@ -1685,7 +1684,7 @@ RECEIVE_TPDU_AGAIN_CMD:
 				/* This is not the last block, we should receive a R type block with a last transmitted I Block sequence + 1 */
 				if(!SC_TPDU_T1_is_RBLOCK(&tpdu_rcv) || !SC_TPDU_T1_is_sequence_ok(&tpdu_rcv, (SC_TPDU_T1_get_sequence(&tpdu_send) + 1) % 2)){
 					/* This is not what we expect */
-					printf("[Smartcard T=1] Unexpected case: received other block than expected RBLOCK, or bad sequence number ...\n");
+					log_printf("[Smartcard T=1] Unexpected case: received other block than expected RBLOCK, or bad sequence number ...\n");
 					goto err;
 				}
 			}
@@ -1702,14 +1701,14 @@ RECEIVE_TPDU_AGAIN_CMD:
 							goto SEND_TPDU_AGAIN_CMD;
 						}
 						/* Unexpected error */
-						printf("[Smartcard T=1] Unexpected case: received error block with bad sequence number ...\n");
+						log_printf("[Smartcard T=1] Unexpected case: received error block with bad sequence number ...\n");
 						goto err;
 					}
 					/* If this is something else, fallback to our error case ... */
 					if(SC_TPDU_T1_is_SBLOCK(&tpdu_rcv)){
 						/* If this is an SBLOCK we should not receive, this is an error ... */
 						if((SC_TPDU_T1_SBLOCK_get_type(&tpdu_rcv) == SBLOCK_RESYNC_REQ) || (SC_TPDU_T1_SBLOCK_get_type(&tpdu_rcv) == SBLOCK_WAITING_RESP)){
-							printf("[Smartcard T=1] Unexpected SBLOCK reveived from smartcard (SBLOCK_RESYNC_REQ or SBLOCK_WAITING_RESP)\n");
+							log_printf("[Smartcard T=1] Unexpected SBLOCK reveived from smartcard (SBLOCK_RESYNC_REQ or SBLOCK_WAITING_RESP)\n");
 							goto err;
 						}
 						/* If this is a Request Waiting Time extension, answer and go back to waiting our response ... */
@@ -1731,7 +1730,7 @@ RECEIVE_TPDU_AGAIN_CMD:
 								goto err;
 							}
 							if((new_ifsc == 0) || (new_ifsc == 255)){
-								printf("[Smartcard T=1] Bad value for IFSC asked with SBLOCK_CHANGE_IFS_REQ = %d\n", new_ifsc);
+								log_printf("[Smartcard T=1] Bad value for IFSC asked with SBLOCK_CHANGE_IFS_REQ = %d\n", new_ifsc);
 								goto err;
 							}
 							if(atr->ifsc >= new_ifsc){
@@ -1742,15 +1741,15 @@ RECEIVE_TPDU_AGAIN_CMD:
 								SC_TPDU_T1_send_sblock(SBLOCK_CHANGE_IFS_RESP, tpdu_rcv.data, tpdu_rcv.len, atr);
 							}
 							else{
-								printf("[Smartcard T=1] SBLOCK received from card of type SBLOCK_CHANGE_IFS_REQ with IFS %d > old IFS %d, this not supported yet!\n", new_ifsc, atr->ifsc);
+								log_printf("[Smartcard T=1] SBLOCK received from card of type SBLOCK_CHANGE_IFS_REQ with IFS %d > old IFS %d, this not supported yet!\n", new_ifsc, atr->ifsc);
 								goto err;
 							}
 						}
 						/* Else, fallback to error since SBLOCKS are not fully implemented */
-						printf("[Smartcard T=1] S blocks automaton not fully implemented yet!\n");
+						log_printf("[Smartcard T=1] S blocks automaton not fully implemented yet!\n");
 						goto err;
 					}
-					printf("[Smartcard T=1] Unexpected case: received other block than expected IBLOCK, or bad sequence number ...\n");
+					log_printf("[Smartcard T=1] Unexpected case: received other block than expected IBLOCK, or bad sequence number ...\n");
 					goto err;
 				}
 				/* Now get out and receive other necessary I blocks */
@@ -1758,7 +1757,7 @@ RECEIVE_TPDU_AGAIN_CMD:
 		}
 		else{
 			/* Error pulling the response ... */
-			printf("[Smartcard T=1] TPDU response reception error 1 ...\n");
+			log_printf("[Smartcard T=1] TPDU response reception error 1 ...\n");
 			goto err;
 		}	
 	}
@@ -1789,7 +1788,7 @@ RECEIVE_TPDU_AGAIN_CMD:
 RECEIVE_TPDU_AGAIN_RESP:
 			/* Receive the new block */
 			if(SC_pull_TPDU_T1(&tpdu_rcv, bwt_factor * BWT_block_wait_time)){
-				printf("[Smartcard T=1] TPDU response reception error 2 ...\n");
+				log_printf("[Smartcard T=1] TPDU response reception error 2 ...\n");
 				goto err;
 			}
 			/* If the checksum of the received block is wrong, send an error R block and receive again */
@@ -1806,7 +1805,7 @@ RECEIVE_TPDU_AGAIN_RESP:
 				if(SC_TPDU_T1_is_SBLOCK(&tpdu_rcv)){
 					/* If this is an SBLOCK we should not receive, this is an error ... */
 					if((SC_TPDU_T1_SBLOCK_get_type(&tpdu_rcv) == SBLOCK_RESYNC_REQ) || (SC_TPDU_T1_SBLOCK_get_type(&tpdu_rcv) == SBLOCK_WAITING_RESP)){
-						printf("[Smartcard T=1] Unexpected SBLOCK received from smartcard (SBLOCK_RESYNC_REQ or SBLOCK_WAITING_RESP)\n");
+						log_printf("[Smartcard T=1] Unexpected SBLOCK received from smartcard (SBLOCK_RESYNC_REQ or SBLOCK_WAITING_RESP)\n");
 						goto err;
 					}
 					/* If this is a Request Waiting Time extension, answer and go back to waiting our response ... */
@@ -1828,7 +1827,7 @@ RECEIVE_TPDU_AGAIN_RESP:
 							goto err;
 						}
 						if((new_ifsc == 0) || (new_ifsc == 255)){
-							printf("[Smartcard T=1] Bad value for IFSC asked with SBLOCK_CHANGE_IFS_REQ = %d\n", new_ifsc);
+							log_printf("[Smartcard T=1] Bad value for IFSC asked with SBLOCK_CHANGE_IFS_REQ = %d\n", new_ifsc);
 							goto err;
 						}
 						atr->ifsc = new_ifsc;
@@ -1837,11 +1836,11 @@ RECEIVE_TPDU_AGAIN_RESP:
 						SC_TPDU_T1_send_sblock(SBLOCK_CHANGE_IFS_RESP, tpdu_rcv.data, tpdu_rcv.len, atr);
 					}
 					/* Else, fallback to error since SBLOCKS are not fully implemented */
-					printf("[Smartcard T=1] S blocks automaton not fully implemented yet!\n");
+					log_printf("[Smartcard T=1] S blocks automaton not fully implemented yet!\n");
 					goto err;
 				}
 				else{
-					printf("[Smartcard T=1] TPDU response reception error: expected IBLOCK but got something else ...\n");
+					log_printf("[Smartcard T=1] TPDU response reception error: expected IBLOCK but got something else ...\n");
 					goto err;
 				}
 			}
@@ -1883,39 +1882,39 @@ void SC_print_TPDU(SC_TPDU *tpdu)
 		return;
 	}
 
-	printf("===== TPDU ============\n");
-	printf("NAD = %x, PCB = %x, LEN = %x\n", tpdu->nad, tpdu->pcb, tpdu->len);
+	log_printf("===== TPDU ============\n");
+	log_printf("NAD = %x, PCB = %x, LEN = %x\n", tpdu->nad, tpdu->pcb, tpdu->len);
 	if(tpdu->len > TPDU_T1_DATA_MAXLEN){
-		printf("Len error: too big ...\n");
+		log_printf("Len error: too big ...\n");
 		return;
 	}
-	printf("TPDU TYPE = ");
+	log_printf("TPDU TYPE = ");
 	if(SC_TPDU_T1_is_IBLOCK(tpdu)){
-		printf("I-Type\n");
+		log_printf("I-Type\n");
 	}
 	else if(SC_TPDU_T1_is_RBLOCK(tpdu)){
-		printf("R-Type\n");
+		log_printf("R-Type\n");
 	}
 	else if(SC_TPDU_T1_is_SBLOCK(tpdu)){
-		printf("S-Type\n");
+		log_printf("S-Type\n");
 	}
 	else{
-		printf("UNKNOWN\n");
+		log_printf("UNKNOWN\n");
 	}
-	printf("APDU: ");
+	log_printf("APDU: ");
 	if(tpdu->data != NULL){
 		for(i = 0; i < tpdu->len; i++){
-			printf("%x ", tpdu->data[i]);
+			log_printf("%x ", tpdu->data[i]);
 		}
 	}
 	if(tpdu->len != 0){
-		printf("\n");
+		log_printf("\n");
 	}
 	if(tpdu->edc_type == EDC_TYPE_LRC){
-		printf("EDC (LRC) = %x\n", tpdu->edc_lrc);
+		log_printf("EDC (LRC) = %x\n", tpdu->edc_lrc);
 	}
 	else{
-		printf("EDC (CRC) = %x\n", tpdu->edc_crc);
+		log_printf("EDC (CRC) = %x\n", tpdu->edc_crc);
 	}
 
 	return;
@@ -1935,7 +1934,7 @@ int SC_iso7816_send_APDU(SC_APDU_cmd *apdu, SC_APDU_resp *resp, SC_ATR *atr, uin
 			return SC_send_APDU_T1(apdu, resp, atr);
 			break;
 		default:
-			printf("[Smartcard] Unsupported asked protocol T=%d in SC_iso7816_send_APDU\n", T_protocol);
+			log_printf("[Smartcard] Unsupported asked protocol T=%d in SC_iso7816_send_APDU\n", T_protocol);
 			goto err;
 	}
 
@@ -1958,7 +1957,7 @@ int SC_iso7816_wait_card_timeout(SC_ATR *atr __attribute__((unused)), uint8_t T_
 			SC_delay_etu(BWT_block_wait_time);
 			break;
 		default:
-			printf("[Smartcard] Unsupported asked protocol T=%d in SC_iso7816_wait_card_timeout\n", T_protocol);
+			log_printf("[Smartcard] Unsupported asked protocol T=%d in SC_iso7816_wait_card_timeout\n", T_protocol);
 			goto err;
 	}
 	
@@ -2053,12 +2052,12 @@ SC_READER_IDLE_LABEL:
 			platform_set_smartcard_rst(0);
 			/* Vcc is set low */
 			platform_set_smartcard_vcc(0);
-			printf("Waiting for card insertion\n");
+			log_printf("Waiting for card insertion\n");
 			/* We are waiting for a card insertion to make the transition
 			 */
 			while(!platform_is_smartcard_inserted())
 				continue;
-			printf("Card detected ... Go!\n");
+			log_printf("Card detected ... Go!\n");
 			/* A card has been inserted, go! */
 			goto SC_POWER_CARD_LABEL;
 			break;
@@ -2106,7 +2105,7 @@ SC_PROTOCOL_NEG_LABEL:
 			break;
 		}
 		default:
-			printf("Smartcard unhandled state %d in T=0 initialization FSM", SC_current_state);
+			log_printf("Smartcard unhandled state %d in T=0 initialization FSM", SC_current_state);
 			return -1;
 	}
 

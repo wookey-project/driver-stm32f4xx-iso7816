@@ -14,9 +14,10 @@
 #include "kernel/exported/devices.h"
 //#include "stm32f4xx_rcc.h"
 
-#include "api/print.h"
 #include "api/regutils.h"
 #include "autoconf.h"
+
+#include "smartcard_print.h"
 
 /* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is 
  * not present, and at state low (linked to GND) when the card is inserted.

@@ -5,6 +5,7 @@
 #include "smartcard_iso7816_platform.h"
 #include "api/semaphore.h"
 
+
 /* The target clock frequency is 3.5MHz for the ATR < max 5MHz.
  * The advantage of this frequency is that it is a perfect divisor of
  * our USARTS core drequencies:
@@ -178,7 +179,7 @@ uint8_t platform_early_gpio_init(void)
 
   ret = sys_init(INIT_DEVACCESS, &dev, &dev_desc);
   if (ret != 0) {
-      printf("Error while declaring GPIO device: %d\n", ret);
+      log_printf("Error while declaring GPIO device: %d\n", ret);
   }
   return ret;
 }
@@ -188,7 +189,7 @@ void platform_set_smartcard_rst(uint8_t val)
   e_syscall_ret ret;
   ret = sys_cfg(CFG_GPIO_SET, (uint8_t)(('E' - 'A')<< 4) + 3, val);
   if (ret != SYS_E_DONE) {
-    printf("unable to set gpio RST pin value %x: %x\n", val, strerror(ret));
+    log_printf("unable to set gpio RST pin value %x: %x\n", val, strerror(ret));
   }
 }
 
@@ -197,7 +198,7 @@ void platform_set_smartcard_vcc(uint8_t val)
   e_syscall_ret ret;
   ret = sys_cfg(CFG_GPIO_SET, (uint8_t)(('D' - 'A') << 4) + 7, val);
   if (ret != SYS_E_DONE) {
-    printf("unable to set gpio VCC pin with %x: %s\n", val, strerror(ret));
+    log_printf("unable to set gpio VCC pin with %x: %s\n", val, strerror(ret));
   }
 }
 
@@ -208,7 +209,7 @@ uint8_t platform_early_usart_init(void)
   uint8_t ret = 0;
   ret = usart_early_init(&smartcard_usart_config);
   if (ret != 0) {
-      printf("Error while early init of USART: %d\n", ret);
+      log_printf("Error while early init of USART: %d\n", ret);
   }
   return ret;
 }
@@ -239,7 +240,7 @@ uint8_t platform_is_smartcard_inserted(void)
 
             ret = sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), &val);
             if (ret != SYS_E_DONE) {
-                printf("Unable to read from GPIOE / pin 2, ret %s\n", strerror(ret));
+                log_printf("Unable to read from GPIOE / pin 2, ret %s\n", strerror(ret));
                 return 0;
             }
             if (!val) {
@@ -297,7 +298,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
                 *target_freq = i;
         }
 
-        printf("Rounding target freguency to %d\n", *target_freq);
+        log_printf("Rounding target freguency to %d\n", *target_freq);
 
         /* Then, compute the baudrate depending on the target frequency */
         /* Baudrate is the clock frequency divided by one ETU (372 ticks by default, possibly negotiated). 
@@ -349,7 +350,7 @@ int platform_smartcard_init(void){
 	platform_SC_byte = 0;
 
 	/* Initialize the USART in smartcard mode */
-	printf("==> Enable USART%d in smartcard mode!\n", smartcard_usart_config.usart);
+	log_printf("==> Enable USART%d in smartcard mode!\n", smartcard_usart_config.usart);
  	usart_init(&smartcard_usart_config);
 	return 0;
 }
