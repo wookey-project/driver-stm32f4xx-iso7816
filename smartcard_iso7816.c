@@ -1994,6 +1994,7 @@ static int SC_reinit_iso7816(void){
         last_send_sequence = last_received_sequence = 0;
 
         /* (Re)Initialize the hardware blocks */
+	platform_smartcard_usart_reinit();
         if(platform_smartcard_init()){
                 goto err;
         }
@@ -2041,23 +2042,25 @@ int SC_iso7816_fsm_init(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negiotiate_
 	switch (SC_current_state) {
 		case SC_READER_IDLE:{
 SC_READER_IDLE_LABEL:
+			/* RST is set low */
+			platform_set_smartcard_rst(0);
+			/* Vcc is set low */
+			platform_set_smartcard_vcc(0);
+
+			log_printf("Waiting for card insertion\n");
+			platform_SC_reinit_smartcard_contact();
+			/* We are waiting for a card insertion to make the transition
+			 */
+			while(!platform_is_smartcard_inserted())
+				continue;
+			log_printf("Card detected ... Go!\n");
+
 			SC_current_state = SC_READER_IDLE;
 
 			/* (Re)initialize our waiting times and other variables  */
 			if(SC_reinit_iso7816()){
 				return -1;
 			}
-
-			/* RST is set low */
-			platform_set_smartcard_rst(0);
-			/* Vcc is set low */
-			platform_set_smartcard_vcc(0);
-			log_printf("Waiting for card insertion\n");
-			/* We are waiting for a card insertion to make the transition
-			 */
-			while(!platform_is_smartcard_inserted())
-				continue;
-			log_printf("Card detected ... Go!\n");
 			/* A card has been inserted, go! */
 			goto SC_POWER_CARD_LABEL;
 			break;

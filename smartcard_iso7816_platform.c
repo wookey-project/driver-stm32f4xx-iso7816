@@ -358,6 +358,7 @@ int platform_smartcard_init(void){
 void platform_smartcard_usart_reinit(void){
 	usart_disable(&smartcard_usart_config);
 	usart_enable(&smartcard_usart_config);
+	log_printf("==> Reinit USART%d\n", smartcard_usart_config.usart);
 
 	return;
 }
@@ -612,14 +613,17 @@ uint64_t platform_get_microseconds_ticks(void){
 }
 
 
+void platform_SC_reinit_smartcard_contact(void){
+	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
+	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
+	platform_SC_gpio_smartcard_contact_changed = 0;
+	return;
+}
 void platform_SC_reinit_iso7816(void){
 	platform_SC_pending_receive_byte = 0;
 	platform_SC_pending_send_byte = 0;
 	platform_SC_byte = 0;
 	dummy_usart_read = 0;
-	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
-	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
-	platform_SC_gpio_smartcard_contact_changed = 0;
 	received_SC_bytes_start = received_SC_bytes_end = 0;
 	semaphore_init(1, &SC_mutex);
 	return;

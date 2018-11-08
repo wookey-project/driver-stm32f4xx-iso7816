@@ -57,6 +57,8 @@ int platform_SC_putc(uint8_t c, uint32_t timeout, uint8_t reset);
 /* Get ticks/time in milliseconds */
 uint64_t platform_get_microseconds_ticks(void);
 
+void platform_SC_reinit_smartcard_contact(void);
+
 void platform_SC_reinit_iso7816(void);
 
 /* shut the smartcard LED in case of communication error */
