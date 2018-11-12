@@ -371,7 +371,7 @@ err:
 }
 
 uint8_t SC_is_smartcard_inserted(SC_Card *card){
-	int ret;
+	int ret = 0;
 
         if(card == NULL){
 		goto err;
@@ -394,7 +394,7 @@ err:
 }
 
 int SC_wait_card_timeout(SC_Card *card){
-	int ret;
+	int ret = 0;
 
         if(card == NULL){
 		goto err;
@@ -410,7 +410,28 @@ int SC_wait_card_timeout(SC_Card *card){
                         goto err;
         }
 
+	return ret;
+err:
+	return -1;
+}
+
+int SC_register_user_handler_action(SC_Card *card, void (*action)(void)){
+        if(card == NULL){
+		goto err;
+	}
+        switch(card->type){
+                case SMARTCARD_CONTACT:
+                        SC_iso7816_register_user_handler_action(action);
+                        break;
+                case SMARTCARD_NFC:
+                case SMARTCARD_UNKNOWN:
+                default:
+                        log_printf("[Smartcard] Print Cards information: Unsupported asked smartcard type %d\n", card->type);
+                        goto err;
+        }
+
 	return 0;
 err:
 	return -1;
+
 }

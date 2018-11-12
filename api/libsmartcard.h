@@ -112,5 +112,6 @@ int SC_fsm_early_init(void);
 void SC_smartcard_lost(SC_Card *card);
 uint8_t SC_is_smartcard_inserted(SC_Card *card);
 int SC_wait_card_timeout(SC_Card *card);
+int SC_register_user_handler_action(SC_Card *card, void (*action)(void));
 
 #endif /* __SMARTCARD_H__ */

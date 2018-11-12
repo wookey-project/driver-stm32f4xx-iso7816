@@ -204,5 +204,6 @@ int SC_iso7816_fsm_early_init(void);
 void SC_iso7816_smartcard_lost(void);
 uint8_t SC_iso7816_is_smartcard_inserted(void);
 int SC_iso7816_wait_card_timeout(SC_ATR *atr, uint8_t T_protocol);
+void SC_iso7816_register_user_handler_action(void (*action)(void));
 
 #endif /* __SMARTCARD_ISO7816_H__ */

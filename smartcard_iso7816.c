@@ -2030,6 +2030,11 @@ uint8_t SC_iso7816_is_smartcard_inserted(void)
   return (platform_is_smartcard_inserted());
 }
 
+void SC_iso7816_register_user_handler_action(void (*action)(void)){
+  platform_smartcard_register_user_handler_action(action);
+  return;
+}
+
 int SC_iso7816_fsm_init(SC_ATR *atr, uint8_t *T_protocol, uint8_t do_negiotiate_pts, uint8_t do_change_baud_rate, uint8_t do_force_protocol, uint32_t do_force_etu){
 	int ret;
 

@@ -66,4 +66,6 @@ void platform_smartcard_lost(void);
 
 void platform_smartcard_usart_reinit(void);
 
+void platform_smartcard_register_user_handler_action(void (*action)(void));
+
 #endif /* __SMARTCARD_ISO7816_PLATFORM_H__ */

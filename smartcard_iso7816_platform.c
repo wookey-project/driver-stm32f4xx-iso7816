@@ -102,15 +102,29 @@ void exti_button_handler(uint8_t irq __attribute__((unused)),
  	exti_butt_count++;
 }
 
-
 /* Initialize the CONTACT pin */
 static volatile uint8_t platform_SC_gpio_smartcard_contact_changed = 0;
+
+static void (*volatile user_handler_action)(void) = NULL;
+void platform_smartcard_register_user_handler_action(void (*action)(void))
+{
+	if(action == NULL){
+		return;
+	}
+	user_handler_action = action;
+	return;
+}
+
+
 
 void exti_handler(uint8_t irq __attribute__((unused)),
                   uint32_t status __attribute__((unused)),
                   uint32_t data __attribute__((unused)))
 {
 	platform_SC_gpio_smartcard_contact_changed = 1;
+	if(user_handler_action != NULL){
+		user_handler_action();
+	}
 	return;
 }
 
@@ -221,7 +235,7 @@ static volatile uint8_t platform_SC_is_smartcard_inserted = 0;
  */
 uint8_t platform_is_smartcard_inserted(void)
 {
-	/* NOTE: we only do this for GoodUSB because we do not have
+	/* NOTE: we only do this for WooKey because we do not have
 	 * insertion switch on the discovery.
  	*/
 #ifdef CONFIG_WOOKEY
@@ -616,6 +630,13 @@ uint64_t platform_get_microseconds_ticks(void){
 void platform_SC_reinit_smartcard_contact(void){
 	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
 	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
+        if (platform_SC_is_smartcard_inserted) {
+                /* toogle led on */
+                sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 1);
+        } else {
+                /* toogle led off */
+                sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 0);
+        }
 	platform_SC_gpio_smartcard_contact_changed = 0;
 	return;
 }
