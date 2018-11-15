@@ -1,4 +1,4 @@
-LIB_NAME ?= libsmartcard
+LIB_NAME ?= libdrviso7816
 
 PROJ_FILES = ../../../../
 LIB_FULL_NAME = $(LIB_NAME).a
