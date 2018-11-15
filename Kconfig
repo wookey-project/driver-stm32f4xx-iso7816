@@ -7,6 +7,6 @@ config USR_DRV_SMARTCARD
   interface.
 config USR_DRV_SMARTCARD_CFLAGS
   string
-  default " -I../../drivers/socs/stm32f439/smartcard/api " if USR_DRV_SMARTCARD
+  default " -I../../drivers/socs/stm32f439/iso7816/api " if USR_DRV_SMARTCARD
 
 
