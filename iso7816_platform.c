@@ -1,8 +1,7 @@
 #include "api/syscall.h"
-#include "kernel/exported/devices.h"
 #include "api/libusart_regs.h"
 #include "api/libusart.h"
-#include "smartcard_iso7816_platform.h"
+#include "api/libdrviso7816.h"
 #include "api/semaphore.h"
 
 
