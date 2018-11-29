@@ -89,7 +89,7 @@ static usart_config_t smartcard_usart_config = {
 };
 
 
-device_t dev = { 0 };   /* Device configuration */
+device_t dev;   /* Device configuration */
 int      dev_desc = 0;  /* Descriptor transmitted by the kernel */
 
 static uint8_t exti_butt_count = 0;
@@ -342,6 +342,7 @@ int platform_smartcard_early_init(void)
 {
   // TODO check the return values
 	/* Initialize the GPIOs */
+    memset((void*)&dev, 0, sizeof(device_t));
 	uint8_t ret = 0;
 	if ((ret = platform_early_gpio_init()) != SYS_E_DONE) {
 		goto gpio_err;
