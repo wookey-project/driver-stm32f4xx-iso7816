@@ -19,7 +19,12 @@
 
 #include "smartcard_print.h"
 
-/* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is 
+typedef enum {
+    DRV7816_MAP_AUTO,
+    DRV7816_MAP_VOLUNTARY
+} drv7816_map_mode_t;
+
+/* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is
  * not present, and at state low (linked to GND) when the card is inserted.
  */
 uint8_t platform_is_smartcard_inserted(void);
@@ -30,7 +35,7 @@ void platform_set_smartcard_vcc(uint8_t val);
 
 
 
-int platform_smartcard_early_init(void);
+int platform_smartcard_early_init(drv7816_map_mode_t map_mode);
 
 int platform_smartcard_init(void);
 
@@ -67,5 +72,9 @@ void platform_smartcard_lost(void);
 void platform_smartcard_usart_reinit(void);
 
 void platform_smartcard_register_user_handler_action(void (*action)(void));
+
+int platform_smartcard_map(void);
+
+int platform_smartcard_unmap(void);
 
 #endif /* __SMARTCARD_ISO7816_PLATFORM_H__ */

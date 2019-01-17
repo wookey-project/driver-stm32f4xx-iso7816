@@ -21,9 +21,9 @@
 
 /* Smartcard USART configuration: we use USART 2:
  * We use the SMARTCARD mode when configuring the GPIOs.
- * The baudrate is set to 9408 bauds (see the explanations in the smartcard_init function). 
+ * The baudrate is set to 9408 bauds (see the explanations in the smartcard_init function).
  * The parameters are set to meet the requirements in the datasheet 24.3.11 section 'Smartcard':
- *      - LINEN bit in the USART_CR2 register cleared. 
+ *      - LINEN bit in the USART_CR2 register cleared.
  *      - HDSEL and IREN bits in the USART_CR3 register cleared.
  *      - Moreover, the CLKEN bit may be set in order to provide a clock to the smartcard.
  * The Smartcard interface is designed to support asynchronous protocol Smartcards as
@@ -215,21 +215,49 @@ void platform_set_smartcard_vcc(uint8_t val)
   }
 }
 
+static volatile bool map_voluntary;
 
-
-uint8_t platform_early_usart_init(void)
+static uint8_t platform_early_usart_init(drv7816_map_mode_t map_mode)
 {
   uint8_t ret = 0;
-  ret = usart_early_init(&smartcard_usart_config);
+  switch (map_mode) {
+      case DRV7816_MAP_AUTO:
+          map_voluntary = false;
+          ret = usart_early_init(&smartcard_usart_config, USART_MAP_AUTO);
+          break;
+      case DRV7816_MAP_VOLUNTARY:
+          map_voluntary = true;
+          ret = usart_early_init(&smartcard_usart_config, USART_MAP_VOLUNTARY);
+          break;
+      default:
+          printf("invalid map mode\n");
+          ret = 1;
+  }
   if (ret != 0) {
       log_printf("Error while early init of USART: %d\n", ret);
   }
   return ret;
 }
 
+int platform_smartcard_map(void)
+{
+    if (map_voluntary) {
+        return usart_map();
+    }
+    return 0;
+}
+
+int platform_smartcard_unmap(void)
+{
+    if (map_voluntary) {
+        return usart_unmap();
+    }
+    return 0;
+}
+
 static volatile uint8_t platform_SC_is_smartcard_inserted = 0;
 
-/* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is 
+/* The SMARTCARD_CONTACT pin is at state high (pullup to Vcc) when no card is
  * not present, and at state low (linked to GND) when the card is inserted.
  */
 uint8_t platform_is_smartcard_inserted(void)
@@ -289,7 +317,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
         /* First, get the usart clock */
         usart_bus_clk = usart_get_bus_clock(config);
 
-        /* Find the best suitable target frequency <= target frequency with regards to our USART core frequency 
+        /* Find the best suitable target frequency <= target frequency with regards to our USART core frequency
          * (i.e. as a divisor of our USART core frequency).
          */
         if(*target_freq > usart_bus_clk){
@@ -314,7 +342,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
         log_printf("Rounding target freguency to %d\n", *target_freq);
 
         /* Then, compute the baudrate depending on the target frequency */
-        /* Baudrate is the clock frequency divided by one ETU (372 ticks by default, possibly negotiated). 
+        /* Baudrate is the clock frequency divided by one ETU (372 ticks by default, possibly negotiated).
          * For example, a frequency of 3.5MHz gives 3.5MHz / 372 ~= 9408 bauds for a 372 ticks ETU. */
         config->baudrate = (*target_freq) / (*etu);
 
@@ -337,8 +365,7 @@ static volatile uint8_t platform_SC_pending_send_byte = 0;
 static volatile uint8_t platform_SC_byte = 0;
 
 
-
-int platform_smartcard_early_init(void)
+int platform_smartcard_early_init(drv7816_map_mode_t map_mode)
 {
   // TODO check the return values
 	/* Initialize the GPIOs */
@@ -347,7 +374,7 @@ int platform_smartcard_early_init(void)
 	if ((ret = platform_early_gpio_init()) != SYS_E_DONE) {
 		goto gpio_err;
 	}
-	if ((ret = platform_early_usart_init()) != SYS_E_DONE) {
+	if ((ret = platform_early_usart_init(map_mode)) != SYS_E_DONE) {
         	goto usart_err;
 	}
 	return 0;
@@ -461,7 +488,7 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 		}
 
 		/* Check if we overflow */
-		/* We have no more room to store bytes, just give up ... and 
+		/* We have no more room to store bytes, just give up ... and
 		 * drop the current byte
 		 */
 		if(((received_SC_bytes_end + 1) % sizeof(received_SC_bytes)) == received_SC_bytes_start){
@@ -470,7 +497,7 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 				continue;
 			}
 			dummy_usart_read = data & 0xff;
-			return;	
+			return;
 		}
 		received_SC_bytes[received_SC_bytes_end] = data & 0xff;
 		/* Wrap up our ring buffer */
@@ -500,7 +527,7 @@ int platform_SC_set_inverse_conv(void){
 	uint64_t t, start_tick, curr_tick;
 
 	/* Flush the pending received byte from the USART block */
-	dummy_usart_read = (*r_CORTEX_M_USART_DR(SMARTCARD_USART)) & 0xff;	
+	dummy_usart_read = (*r_CORTEX_M_USART_DR(SMARTCARD_USART)) & 0xff;
 	/* ACK the pending parity errors */
 	dummy_usart_read = get_reg(r_CORTEX_M_USART_SR(smartcard_usart_config.usart), USART_SR_PE);
 
@@ -553,7 +580,7 @@ void platform_SC_flush(void){
 }
 
 /* Low level char PUSH/POP functions */
-/* Smartcard putc and getc handling errors: 
+/* Smartcard putc and getc handling errors:
  * The getc function is non blocking */
 int platform_SC_getc(uint8_t *c,
                      uint32_t timeout __attribute__((unused)),
