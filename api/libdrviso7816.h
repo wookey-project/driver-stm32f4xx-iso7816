@@ -11,7 +11,7 @@
 /* Low level platform related functions */
 
 /* We also use a GPIO for the RST of the smarcard */
-#include "kernel/exported/devices.h"
+#include "api/syscall.h"
 //#include "stm32f4xx_rcc.h"
 
 #include "api/regutils.h"
