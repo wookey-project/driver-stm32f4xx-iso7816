@@ -504,6 +504,14 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 			dummy_usart_read = data & 0xff;
 			return;
 		}
+		if(received_SC_bytes_end >= sizeof(received_SC_bytes)){
+			/* This check should be unnecessary due to the modulus computation
+			 * performed ahead (which is the only update to received_SC_bytes_end),
+			 * but better safe than sorry!
+			 */
+			/* Overflow, get out */
+			return;
+		}
 		received_SC_bytes[received_SC_bytes_end] = data & 0xff;
 		/* Wrap up our ring buffer */
 		received_SC_bytes_end = (received_SC_bytes_end + 1) % sizeof(received_SC_bytes);
@@ -615,7 +623,7 @@ int platform_SC_getc(uint8_t *c,
 	/* Data is ready, go ahead ... */
 	if(received_SC_bytes_start >= sizeof(received_SC_bytes)){
 		/* This check should be unnecessary due to the modulus computation
-		 * performed ahead (which is the only write to received_SC_bytes_start),
+		 * performed ahead (which is the only update to received_SC_bytes_start),
 		 * but better safe than sorry!
 		 */
 		/* Overflow, get out */
