@@ -344,6 +344,10 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
         /* Then, compute the baudrate depending on the target frequency */
         /* Baudrate is the clock frequency divided by one ETU (372 ticks by default, possibly negotiated).
          * For example, a frequency of 3.5MHz gives 3.5MHz / 372 ~= 9408 bauds for a 372 ticks ETU. */
+	if(*etu == 0){
+		/* Avoid division by 0 */
+		goto err;
+	}
         config->baudrate = (*target_freq) / (*etu);
 
         /* Finally, adapt the CLK clock pin frequency to the target frequency using the prescaler.
@@ -431,7 +435,6 @@ err:
  * Low level related functions: we handle the low level USAT/smartcard
  * bytes send and receive stuff here.
  */
-static volatile uint8_t dummy_usart_read = 0;
 
 /* The following buffer is a circular buffer holding the received bytes when
  * an asynchronous burst of ISRs happens (i.e. when sending/receiving many bytes
@@ -446,6 +449,8 @@ static volatile uint32_t SC_mutex;
 volatile unsigned int received = 0;
 
 static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint32_t data){
+	/* Dummy read variable */
+	uint8_t dummy_usart_read = 0;
 	/* Check if we have a parity error */
 	if ((get_reg(&status, USART_SR_PE)) && (platform_SC_pending_send_byte != 0)) {
 		/* Parity error, program a resend */
@@ -525,6 +530,8 @@ int platform_SC_set_inverse_conv(void){
 	uint32_t old_mask;
 	usart_config_t *config = &smartcard_usart_config;
 	uint64_t t, start_tick, curr_tick;
+	/* Dummy read variable */
+	uint8_t dummy_usart_read = 0;
 
 	/* Flush the pending received byte from the USART block */
 	dummy_usart_read = (*r_CORTEX_M_USART_DR(SMARTCARD_USART)) & 0xff;
@@ -605,7 +612,15 @@ int platform_SC_getc(uint8_t *c,
 		}
 		return -1;
 	}
-	/* Data is ready, go ahead */
+	/* Data is ready, go ahead ... */
+	if(received_SC_bytes_start >= sizeof(received_SC_bytes)){
+		/* This check should be unnecessary due to the modulus computation
+		 * performed ahead (which is the only write to received_SC_bytes_start),
+		 * but better safe than sorry!
+		 */
+		/* Overflow, get out */
+		return -1;
+	}
 	*c = received_SC_bytes[received_SC_bytes_start];
 	/* Wrap up our ring buffer */
 	received_SC_bytes_start = (received_SC_bytes_start + 1) % sizeof(received_SC_bytes);
@@ -671,7 +686,6 @@ void platform_SC_reinit_iso7816(void){
 	platform_SC_pending_receive_byte = 0;
 	platform_SC_pending_send_byte = 0;
 	platform_SC_byte = 0;
-	dummy_usart_read = 0;
 	received_SC_bytes_start = received_SC_bytes_end = 0;
 	semaphore_init(1, &SC_mutex);
 	return;
