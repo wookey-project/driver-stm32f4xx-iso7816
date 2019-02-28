@@ -484,7 +484,7 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 			return;
 		}
 		/* Lock the mutex */
-		if(!semaphore_trylock(&SC_mutex)){
+		if(!mutex_trylock(&SC_mutex)){
 			/* We should not be blocking when locking the mutex since we are in ISR mode!
 			 * This means that we will miss bytes here ... But this is better than corrupting our
 			 * reception ring buffer!
@@ -498,11 +498,9 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 		 */
 		if(((received_SC_bytes_end + 1) % sizeof(received_SC_bytes)) == received_SC_bytes_start){
 			/* Unlock the mutex */
-			while(!semaphore_release(&SC_mutex)){
-				continue;
-			}
-			dummy_usart_read = data & 0xff;
-			return;
+            mutex_unlock(&SC_mutex);
+            dummy_usart_read = data & 0xff;
+            return;
 		}
 		if(received_SC_bytes_end >= sizeof(received_SC_bytes)){
 			/* This check should be unnecessary due to the modulus computation
@@ -518,9 +516,7 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 		platform_SC_pending_receive_byte = 1;
 
 		/* Unlock the mutex */
-		while(!semaphore_release(&SC_mutex)){
-			continue;
-		}
+		mutex_unlock(&SC_mutex);
 
 		return;
 	}
@@ -584,14 +580,10 @@ void platform_SC_flush(void){
 	 * our ring buffer!
 	 */
 	/* Lock the mutex */
-	while(!semaphore_trylock(&SC_mutex)){
-		continue;
-	}
+	mutex_lock(&SC_mutex);
 	platform_SC_pending_receive_byte = platform_SC_pending_send_byte = 0;
 	received_SC_bytes_start = received_SC_bytes_end = 0;
-	while(!semaphore_release(&SC_mutex)){
-		continue;
-	}
+	mutex_unlock(&SC_mutex);
 }
 
 /* Low level char PUSH/POP functions */
@@ -599,35 +591,31 @@ void platform_SC_flush(void){
  * The getc function is non blocking */
 int platform_SC_getc(uint8_t *c,
                      uint32_t timeout __attribute__((unused)),
-                     uint8_t reset __attribute__((unused))){
+                     uint8_t reset __attribute__((unused)))
+{
+    int ret = -1;
+
 	if(c == NULL){
-		return -1;
+		goto invalid_input;
 	}
-	if(platform_SC_pending_receive_byte != 1){
-		return -1;
+	if(platform_SC_pending_receive_byte != 1) {
+		goto invalid_input;
 	}
 	/* Lock the mutex */
-	while(!semaphore_trylock(&SC_mutex)){
-		continue;
-	}
+    mutex_lock(&SC_mutex);
 
 	/* Read our ring buffer to check if something is ready */
 	if(received_SC_bytes_start == received_SC_bytes_end){
 		/* Ring buffer is empty */
-		/* Unlock the mutex */
-		while(!semaphore_release(&SC_mutex)){
-			continue;
-		}
-		return -1;
+        goto err;
 	}
 	/* Data is ready, go ahead ... */
-	if(received_SC_bytes_start >= sizeof(received_SC_bytes)){
+	if(received_SC_bytes_start >= sizeof(received_SC_bytes)) {
 		/* This check should be unnecessary due to the modulus computation
 		 * performed ahead (which is the only update to received_SC_bytes_start),
 		 * but better safe than sorry!
 		 */
-		/* Overflow, get out */
-		return -1;
+		goto err;
 	}
 	*c = received_SC_bytes[received_SC_bytes_start];
 	/* Wrap up our ring buffer */
@@ -636,12 +624,14 @@ int platform_SC_getc(uint8_t *c,
 	if(received_SC_bytes_start == received_SC_bytes_end){
 		platform_SC_pending_receive_byte = 0;
 	}
-	/* Unlock the mutex */
-	while(!semaphore_release(&SC_mutex)){
-		continue;
-	}
+    ret = 0;
 
-	return 0;
+err:
+    mutex_unlock(&SC_mutex);
+
+invalid_input:
+
+	return ret;
 }
 
 /* The putc function is non-blocking and checks
@@ -695,7 +685,6 @@ void platform_SC_reinit_iso7816(void){
 	platform_SC_pending_send_byte = 0;
 	platform_SC_byte = 0;
 	received_SC_bytes_start = received_SC_bytes_end = 0;
-	semaphore_init(1, &SC_mutex);
+	mutex_init(&SC_mutex);
 	return;
 }
-
