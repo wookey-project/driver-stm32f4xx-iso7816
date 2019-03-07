@@ -132,7 +132,7 @@ uint8_t platform_early_gpio_init(void)
   e_syscall_ret ret;
 
   strncpy(dev.name, "smart_gpios", sizeof("smart_gpios"));
-#if CONFIG_WOOKEY // Support for pin card led indicator
+#if CONFIG_WOOKEY || CONFIG_WOOKEY2 // Support for pin card led indicator
   dev.gpio_num = 5;
 #else
   dev.gpio_num = 3;
@@ -168,7 +168,7 @@ uint8_t platform_early_gpio_init(void)
   dev.gpios[2].type = GPIO_PIN_OTYPER_PP;
   dev.gpios[2].speed = GPIO_PIN_VERY_HIGH_SPEED;
 
-#if CONFIG_WOOKEY
+#if CONFIG_WOOKEY || CONFIG_WOOKEY2
   // led info
   dev.gpios[3].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_SPEED;
   dev.gpios[3].kref.port = GPIO_PC;
@@ -265,7 +265,7 @@ uint8_t platform_is_smartcard_inserted(void)
 	/* NOTE: we only do this for WooKey because we do not have
 	 * insertion switch on the discovery.
  	*/
-#ifdef CONFIG_WOOKEY
+#if CONFIG_WOOKEY || CONFIG_WOOKEY2
         e_syscall_ret ret;
         uint8_t val = 0;
         uint64_t count = 0;
