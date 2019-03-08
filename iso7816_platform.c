@@ -3,6 +3,9 @@
 #include "api/libusart.h"
 #include "api/libdrviso7816.h"
 #include "api/semaphore.h"
+#include "generated/smartcard.h"
+#include "generated/led0.h"
+#include "generated/dfu_button.h"
 
 
 /* The target clock frequency is 3.5MHz for the ATR < max 5MHz.
@@ -141,8 +144,8 @@ uint8_t platform_early_gpio_init(void)
 
   // contact port
   dev.gpios[0].mask = GPIO_MASK_SET_EXTI | GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
-  dev.gpios[0].kref.port = GPIO_PE;
-  dev.gpios[0].kref.pin = 2;
+  dev.gpios[0].kref.port = smartcard_dev_infos.gpios[SMARTCARD_CON].port;
+  dev.gpios[0].kref.pin = smartcard_dev_infos.gpios[SMARTCARD_CON].pin;
   dev.gpios[0].mode = GPIO_PIN_INPUT_MODE;
   dev.gpios[0].pupd = GPIO_NOPULL;
   dev.gpios[0].type = GPIO_PIN_OTYPER_OD;
@@ -152,8 +155,8 @@ uint8_t platform_early_gpio_init(void)
 
   // RST port
   dev.gpios[1].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
-  dev.gpios[1].kref.port = GPIO_PE;
-  dev.gpios[1].kref.pin = 3;
+  dev.gpios[1].kref.port = smartcard_dev_infos.gpios[SMARTCARD_RST].port;
+  dev.gpios[1].kref.pin = smartcard_dev_infos.gpios[SMARTCARD_RST].pin;
   dev.gpios[1].mode = GPIO_PIN_OUTPUT_MODE;
   dev.gpios[1].pupd = GPIO_PULLDOWN;
   dev.gpios[1].type = GPIO_PIN_OTYPER_PP;
@@ -161,8 +164,8 @@ uint8_t platform_early_gpio_init(void)
 
   // VCC port
   dev.gpios[2].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
-  dev.gpios[2].kref.port = GPIO_PD;
-  dev.gpios[2].kref.pin = 7;
+  dev.gpios[2].kref.port = smartcard_dev_infos.gpios[SMARTCARD_VCC].port;
+  dev.gpios[2].kref.pin = smartcard_dev_infos.gpios[SMARTCARD_VCC].pin;
   dev.gpios[2].mode = GPIO_PIN_OUTPUT_MODE;
   dev.gpios[2].pupd = GPIO_PULLDOWN;
   dev.gpios[2].type = GPIO_PIN_OTYPER_PP;
@@ -171,16 +174,16 @@ uint8_t platform_early_gpio_init(void)
 #if CONFIG_WOOKEY
   // led info
   dev.gpios[3].mask = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_SPEED;
-  dev.gpios[3].kref.port = GPIO_PC;
-  dev.gpios[3].kref.pin = 4;
+  dev.gpios[3].kref.port = led0_dev_infos.gpios[LED0].port;
+  dev.gpios[3].kref.pin = led0_dev_infos.gpios[LED0].pin;
   dev.gpios[3].pupd = GPIO_NOPULL;
   dev.gpios[3].mode = GPIO_PIN_OUTPUT_MODE;
   dev.gpios[3].speed = GPIO_PIN_HIGH_SPEED;
 
   // DFU button
   dev.gpios[4].mask = GPIO_MASK_SET_EXTI | GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED;
-  dev.gpios[4].kref.port = GPIO_PE;
-  dev.gpios[4].kref.pin = 4;
+  dev.gpios[4].kref.port = dfu_button_dev_infos.gpios[DFU_BTN].port;
+  dev.gpios[4].kref.pin = dfu_button_dev_infos.gpios[DFU_BTN].pin;
   dev.gpios[4].mode = GPIO_PIN_INPUT_MODE;
   dev.gpios[4].pupd = GPIO_NOPULL;
   dev.gpios[4].type = GPIO_PIN_OTYPER_PP;
