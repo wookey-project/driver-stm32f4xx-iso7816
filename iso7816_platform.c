@@ -1,4 +1,5 @@
 #include "api/syscall.h"
+#include "api/string.h"
 #include "api/libusart_regs.h"
 #include "api/libusart.h"
 #include "api/libdrviso7816.h"
