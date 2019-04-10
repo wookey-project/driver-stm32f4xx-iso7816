@@ -201,6 +201,38 @@ uint8_t platform_early_gpio_init(void)
   return ret;
 }
 
+
+static inline void toggle_smartcard_led_on(void){
+#if CONFIG_WOOKEY
+	/* toogle led on */
+	sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 1);
+#endif
+	return;
+}
+
+static inline void toggle_smartcard_led_off(void){
+#if CONFIG_WOOKEY
+	/* toogle led off */
+	sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 0);
+#endif
+	return;
+}
+
+static inline void toggle_smartcard_led(){
+	uint64_t end_tick;
+	uint64_t start_tick = platform_get_microseconds_ticks();
+	/* Force LED off */
+	toggle_smartcard_led_off();
+	/* Wait a bit (100 milliseconds) */
+	end_tick = platform_get_microseconds_ticks();
+	while((end_tick - start_tick) < 100000){
+		end_tick = platform_get_microseconds_ticks();
+	}
+	/* Force LED on */
+	toggle_smartcard_led_on();
+	return;
+}
+
 void platform_set_smartcard_rst(uint8_t val)
 {
   e_syscall_ret ret;
@@ -588,6 +620,8 @@ void platform_SC_flush(void){
 	platform_SC_pending_receive_byte = platform_SC_pending_send_byte = 0;
 	received_SC_bytes_start = received_SC_bytes_end = 0;
 	mutex_unlock(&SC_mutex);
+	/* Toggle the smartcard led */
+	toggle_smartcard_led();
 }
 
 /* Low level char PUSH/POP functions */
@@ -672,14 +706,13 @@ uint64_t platform_get_microseconds_ticks(void){
 
 
 void platform_SC_reinit_smartcard_contact(void){
+	/* Check the contact (is smartcard inserted) */
 	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
 	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
         if (platform_SC_is_smartcard_inserted) {
-                /* toogle led on */
-                sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 1);
+		toggle_smartcard_led_on();
         } else {
-                /* toogle led off */
-                sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 0);
+		toggle_smartcard_led_off();
         }
 	platform_SC_gpio_smartcard_contact_changed = 0;
 	return;
