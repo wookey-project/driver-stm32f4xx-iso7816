@@ -205,7 +205,7 @@ uint8_t platform_early_gpio_init(void)
 static inline void toggle_smartcard_led_on(void){
 #if CONFIG_WOOKEY
 	/* toogle led on */
-	sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 1);
+	sys_cfg(CFG_GPIO_SET, (uint8_t)((led0_dev_infos.gpios[LED0].port << 4) + led0_dev_infos.gpios[LED0].pin), 1);
 #endif
 	return;
 }
@@ -213,7 +213,7 @@ static inline void toggle_smartcard_led_on(void){
 static inline void toggle_smartcard_led_off(void){
 #if CONFIG_WOOKEY
 	/* toogle led off */
-	sys_cfg(CFG_GPIO_SET, (uint8_t)((('C' - 'A') << 4) + 4), 0);
+	sys_cfg(CFG_GPIO_SET, (uint8_t)((led0_dev_infos.gpios[LED0].port << 4) + led0_dev_infos.gpios[LED0].pin), 0);
 #endif
 	return;
 }
@@ -542,7 +542,10 @@ static void platform_smartcard_irq(uint32_t status __attribute__((unused)), uint
 			/* This check should be unnecessary due to the modulus computation
 			 * performed ahead (which is the only update to received_SC_bytes_end),
 			 * but better safe than sorry!
+             *
 			 */
+
+            mutex_unlock(&SC_mutex);
 			/* Overflow, get out */
 			return;
 		}
