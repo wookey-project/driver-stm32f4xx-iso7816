@@ -7,14 +7,14 @@
 #ifndef __SMARTCARD_ISO7816_PLATFORM_H__
 #define __SMARTCARD_ISO7816_PLATFORM_H__
 
-#include "api/types.h"
+#include "libc/types.h"
 /* Low level platform related functions */
 
 /* We also use a GPIO for the RST of the smarcard */
-#include "api/syscall.h"
+#include "libc/syscall.h"
 //#include "stm32f4xx_rcc.h"
 
-#include "api/regutils.h"
+#include "libc/regutils.h"
 #include "autoconf.h"
 
 #include "smartcard_print.h"
