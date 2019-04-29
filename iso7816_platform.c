@@ -1,6 +1,6 @@
 #include "libc/syscall.h"
 #include "libc/string.h"
-#include "libusart_regs.h"
+#include "libusart_fields.h"
 #include "libusart.h"
 #include "libdrviso7816.h"
 #include "libc/semaphore.h"
@@ -577,9 +577,9 @@ int platform_SC_set_inverse_conv(void){
 	uint8_t dummy_usart_read = 0;
 
 	/* Flush the pending received byte from the USART block */
-	dummy_usart_read = (*r_CORTEX_M_USART_DR(SMARTCARD_USART)) & 0xff;
+	dummy_usart_read = (*usart_get_data_addr(SMARTCARD_USART)) & 0xff;
 	/* ACK the pending parity errors */
-	dummy_usart_read = get_reg(r_CORTEX_M_USART_SR(smartcard_usart_config.usart), USART_SR_PE);
+	dummy_usart_read = get_reg(usart_get_status_addr(smartcard_usart_config.usart), USART_SR_PE);
 
 	/* Reconfigure the usart with an ODD parity */
 	if(config->mode != SMARTCARD){
@@ -688,7 +688,7 @@ int platform_SC_putc(uint8_t c,
 	if((platform_SC_pending_send_byte == 0) || (platform_SC_pending_send_byte >= 3)){
 		platform_SC_pending_send_byte = 1;
 		/* Push the byte on the line */
-		(*r_CORTEX_M_USART_DR(SMARTCARD_USART)) = c;
+		(*usart_get_data_addr(SMARTCARD_USART)) = c;
 		return -1;
 	}
 	if(platform_SC_pending_send_byte == 2){
