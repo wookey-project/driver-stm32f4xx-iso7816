@@ -436,7 +436,7 @@ int platform_smartcard_init(void){
 	return 0;
 }
 
-void platform_smartcard_usart_reinit(void){
+void platform_smartcard_reinit(void){
 	usart_disable(&smartcard_usart_config);
 	usart_enable(&smartcard_usart_config);
 	log_printf("==> Reinit USART%d\n", smartcard_usart_config.usart);

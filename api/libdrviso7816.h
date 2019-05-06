@@ -69,7 +69,7 @@ void platform_SC_reinit_iso7816(void);
 /* shut the smartcard LED in case of communication error */
 void platform_smartcard_lost(void);
 
-void platform_smartcard_usart_reinit(void);
+void platform_smartcard_reinit(void);
 
 void platform_smartcard_register_user_handler_action(void (*action)(void));
 
