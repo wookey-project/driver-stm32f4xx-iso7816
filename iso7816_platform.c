@@ -316,7 +316,7 @@ uint8_t platform_is_smartcard_inserted(void)
             } while (((local_count - count) / 1000) < 100);
 
             ret = sys_cfg(CFG_GPIO_GET, 
-                  (uint8_t)(smartcard_dev_infos.gpios[SMARTCARD_CON].port << 4 
+                  (uint8_t)((smartcard_dev_infos.gpios[SMARTCARD_CON].port << 4 )
                             + smartcard_dev_infos.gpios[SMARTCARD_CON].pin), &val);
             if (ret != SYS_E_DONE) {
                 log_printf("Unable to read from GPIOE / pin 2, ret %s\n", strerror(ret));
@@ -325,20 +325,22 @@ uint8_t platform_is_smartcard_inserted(void)
             if (!val) {
                 /* toggle led on */
                 ret = sys_cfg(CFG_GPIO_SET, 
-                  (uint8_t)(smartcard_dev_infos.gpios[LED0].port << 4 
+                  (uint8_t)((smartcard_dev_infos.gpios[LED0].port << 4 )
                            + smartcard_dev_infos.gpios[LED0].pin)
                                                  ,1);
                 if (ret != SYS_E_DONE) {
                   log_printf("Unable to toggle LED0, ret %s\n", strerror(ret));
                   return 0;
+                }
 
             } else {
                 /* toggle led off */
-                ret = sys_cfg(CFG_GPIO_SET, (uint8_t)(smartcard_dev_infos.gpios[LED0].port << 4 
+                ret = sys_cfg(CFG_GPIO_SET, (uint8_t)((smartcard_dev_infos.gpios[LED0].port << 4 )
                                                 + smartcard_dev_infos.gpios[LED0].pin),0);
                 if (ret != SYS_E_DONE) {
                   log_printf("Unable to toggle LED0, ret %s\n", strerror(ret));
                   return 0;
+                }
                 
             }
             platform_SC_gpio_smartcard_contact_changed = 0;
