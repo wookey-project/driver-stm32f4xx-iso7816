@@ -726,7 +726,9 @@ uint64_t platform_get_microseconds_ticks(void){
 
 void platform_SC_reinit_smartcard_contact(void){
 	/* Check the contact (is smartcard inserted) */
-	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&platform_SC_is_smartcard_inserted);
+	uint8_t value;
+	sys_cfg(CFG_GPIO_GET, (uint8_t)((('E' - 'A') << 4) + 2), (uint8_t*)&value);
+	platform_SC_is_smartcard_inserted = value;
 	platform_SC_is_smartcard_inserted = (~platform_SC_is_smartcard_inserted) & 0x1;
         if (platform_SC_is_smartcard_inserted) {
 		toggle_smartcard_led_on();
