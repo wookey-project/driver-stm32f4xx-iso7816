@@ -1,6 +1,8 @@
 About the ISO7816 driver API
 ----------------------------
 
+.. highlight:: c
+
 The API exposed by the driver is quite simple and mainly exposes:
 
   * Initialization functions
@@ -76,7 +78,8 @@ Handling ETU and frequency primitives
 """""""""""""""""""""""""""""""""""""
 
 The following APU: ::
-  int platform_SC_adapt_clocks(uint32_t *etu, uint32_t *frequency);
+
+   int platform_SC_adapt_clocks(uint32_t *etu, uint32_t *frequency);
 
 adapts the low-level USART baudrate and clocks according to the asked ETU in 'uint32_t \*etu' and
 the asked frequency in 'uint32_t \*frequency'. Since all the ETU and frequency are not attainable,
