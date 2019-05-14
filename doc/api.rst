@@ -113,3 +113,12 @@ GPIO handling the smart card detection changes its state.
 .. note::
   LEDs toggling is also present in the driver (but not exposed in the API)
   for user interactions in order to show card presence and absence as well as card activity.
+
+Finally, there is an API to be called by upper layers when a smart card is detected as lost: ::
+
+  void platform_smartcard_lost(void)
+
+this function helps the driver to reinitialize and flush elements, and
+eventually notify other drivers. It should be called when the upper layer libraries indeed detects
+a smart card loss.
+
