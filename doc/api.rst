@@ -3,6 +3,9 @@ About the ISO7816 driver API
 
 .. highlight:: c
 
+
+.. highlight:: c
+
 The API exposed by the driver is quite simple and mainly exposes:
 
   * Initialization functions
