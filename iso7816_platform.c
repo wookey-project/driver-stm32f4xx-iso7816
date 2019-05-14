@@ -380,7 +380,11 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
         i = *target_freq;
         while(i != 0){
                 if(((usart_bus_clk / i) * i) == usart_bus_clk){
-                        break;
+        		prescaler = (usart_bus_clk / i);
+			if((prescaler % 2) == 0){
+				/* Only odd prescalers are of interest */
+	                        break;
+			}
                 }
                 i--;
         }
@@ -406,7 +410,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
          * Also, adapt the guard time (expressed in bauds).
          * Frequency is = (APB_clock / PRESCALER) = (42MHz / 12) = 3.5MHz. The value of the prescaler field is x2 (cf. datasheet).
          */
-        prescaler = (usart_bus_clk / (*target_freq));
+	prescaler = (usart_bus_clk / (*target_freq));
         config->guard_time_prescaler = ((prescaler / 2) << USART_GTPR_PSC_Pos) | (target_guard_time << USART_GTPR_GT_Pos);
 
         return 0;
