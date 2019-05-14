@@ -382,7 +382,7 @@ static int platform_smartcard_clocks_init(usart_config_t *config, uint32_t *targ
                 if(((usart_bus_clk / i) * i) == usart_bus_clk){
         		prescaler = (usart_bus_clk / i);
 			if((prescaler % 2) == 0){
-				/* Only odd prescalers are of interest */
+				/* Only even prescalers are of interest */
 	                        break;
 			}
                 }
