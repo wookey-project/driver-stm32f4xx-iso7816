@@ -22,9 +22,9 @@ Why this driver does not make use of USART DMA?
 
 The ISO7816 is a synchronous protocol. The half-duplex nature
 of the I/O line and the fact that the sender and the receiver
-are either sending or receiving makes polling a simple yet
+are either exclusively sending or receiving makes polling a simple yet
 still efficient strategy. Moreover, the ISO7816 bus is rather
-slow (the maximum clock frequency is 20 MHz, and real life
-smart card usually support up to 10 MHz): polling is not
+slow (the maximum clock frequency authorized by the standard is 20 MHz,
+and real life smart cards usually support up to 10 MHz): polling is not
 really a deal breaker, and using DMA would not drastically improve
 performance (compared to faster buses).
