@@ -54,13 +54,13 @@ The two main exposed functions to read and write bytes on the I/O line are: ::
                      uint32_t timeout __attribute__((unused)),
                      uint8_t reset);
 
-The API is quite self-explanatory: 'platform_SC_getc' writes the received character
-in its argument 'uint8_t \*c', 'platform_SC_putc' pushes the 'uint8_t c' byte on the
+The API is quite self-explanatory: ``platform_SC_getc`` writes the received character
+in its argument ``uint8_t *c``, ``platform_SC_putc`` pushes the ``uint8_t c`` byte on the
 I/O line. These two function are non-blocking: they return -1 in case of failure, and
 0 in case of success (i.e. the byte has been properly received or sent).
 
 .. note::
-   The 'platform_SC_getc' and 'platform_SC_putc' have unused arguments. These arguments are
+   The ``platform_SC_getc`` and ``platform_SC_putc`` have unused arguments. These arguments are
    here for API compatibility and future use
 
 Another function is used for the bytes send/receive primitive: ::
@@ -84,9 +84,9 @@ The following APU: ::
 
    int platform_SC_adapt_clocks(uint32_t *etu, uint32_t *frequency);
 
-adapts the low-level USART baudrate and clocks according to the asked ETU in 'uint32_t \*etu' and
-the asked frequency in 'uint32_t \*frequency'. Since all the ETU and frequency are not attainable,
-these arguments are updated with the chosen values according to a 'best fit' algorithm.
+adapts the low-level USART baudrate and clocks according to the asked ETU in ``uint32_t \*etu`` and
+the asked frequency in ``uint32_t \*frequency``. Since all the ETU and frequency are not attainable,
+these arguments are updated with the chosen values according to a ``best fit`` algorithm.
   
 
 Time measurement
@@ -97,7 +97,7 @@ microseconds precision: ::
 
   uint64_t platform_get_microseconds_ticks(void);
 
-This is merely a wrapper to the 'sys_get_systick(&tick, PREC_MICRO)' syscall.
+This is merely a wrapper to the ``sys_get_systick(&tick, PREC_MICRO)`` syscall.
 
 Card insertion detection
 """""""""""""""""""""""""
@@ -112,7 +112,7 @@ use asynchronous detection, a callback registration API is provided: ::
 
   void platform_smartcard_register_user_handler_action(void (*action)(void));
 
-The user provides a 'void (\*action)(void)' handler that is called whenever the
+The user provides a ``void (*action)(void)`` handler that is called whenever the
 GPIO handling the smart card detection changes its state.
 
 
