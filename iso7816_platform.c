@@ -750,3 +750,8 @@ void platform_SC_reinit_iso7816(void){
 	mutex_init(&SC_mutex);
 	return;
 }
+
+int platform_smartcard_set_1ETU_guardtime(void){
+        /* We are already at 1 ETU guard time, so return OK */
+        return 0;
+}

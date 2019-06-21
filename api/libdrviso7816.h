@@ -77,4 +77,6 @@ int platform_smartcard_map(void);
 
 int platform_smartcard_unmap(void);
 
+int platform_smartcard_set_1ETU_guardtime(void);
+
 #endif /* __SMARTCARD_ISO7816_PLATFORM_H__ */
