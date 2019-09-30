@@ -266,7 +266,7 @@ static uint8_t platform_early_usart_init(drv7816_map_mode_t map_mode)
           ret = usart_early_init(&smartcard_usart_config, USART_MAP_VOLUNTARY);
           break;
       default:
-          printf("invalid map mode\n");
+          log_printf("invalid map mode\n");
           ret = 1;
   }
   if (ret != 0) {
@@ -608,7 +608,7 @@ int platform_SC_set_inverse_conv(void){
 	old_mask = config->set_mask;
 	/* Adapt the configuration at the USART level */
 	config->set_mask = USART_SET_PARITY;
-	config->parity = USART_CR1_PCE_EN | USART_CR1_PS_ODD,
+	config->parity = USART_CR1_PCE_EN | USART_CR1_PS_ODD;
 	usart_init(&smartcard_usart_config);
 	config->set_mask = old_mask;
 
