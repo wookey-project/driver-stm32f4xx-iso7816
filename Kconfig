@@ -1,4 +1,4 @@
-config USR_DRV_ISO7816
+config USR_DRV_DRVISO7816
   bool  "userspace smartcard driver abstraction, using libusart"
   default y
   select USR_DRV_USART
