@@ -7,6 +7,7 @@
 #include "generated/smartcard.h"
 #include "generated/led0.h"
 #include "generated/dfu_button.h"
+#include "libc/sanhandlers.h"
 
 
 /* The target clock frequency is 3.5MHz for the ATR < max 5MHz.
@@ -48,6 +49,8 @@
 cb_usart_getc_t platform_SC_usart_getc = NULL;
 cb_usart_putc_t platform_SC_usart_putc = NULL;
 static void platform_smartcard_irq(uint32_t status, uint32_t data);
+/* Register the handler */
+ADD_GLOB_HANDLER(platform_smartcard_irq)
 
 static usart_config_t smartcard_usart_config = {
         .set_mask = USART_SET_ALL,
@@ -126,7 +129,14 @@ void exti_handler(uint8_t irq __attribute__((unused)),
 {
 	platform_SC_gpio_smartcard_contact_changed = 1;
 	if(user_handler_action != NULL){
-		user_handler_action();
+		/* Sanity check our handler */
+		if(handler_sanity_check((void*)user_handler_action)){
+			sys_exit();
+			return;
+		}
+		else{
+			user_handler_action();
+		}
 	}
 	return;
 }
@@ -663,7 +673,7 @@ int platform_SC_getc(uint8_t *c,
 		goto invalid_input;
 	}
 	/* Lock the mutex */
-    mutex_lock(&SC_mutex);
+        mutex_lock(&SC_mutex);
 
 	/* Read our ring buffer to check if something is ready */
 	if(received_SC_bytes_start == received_SC_bytes_end){
