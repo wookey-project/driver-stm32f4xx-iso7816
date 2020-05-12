@@ -22,7 +22,7 @@ APP_BUILD_DIR = $(BUILD_DIR)/drivers/$(LIB_NAME)
 # About the compilation flags
 ###################################################################
 
-CFLAGS := $(DRIVERS_CFLAGS)
+CFLAGS += $(DRIVERS_CFLAGS)
 # this driver has a dependency on the smartcard lib. This is an
 # exception. drivers usually should not depend on libs.
 # The dependency must be added voluntary
