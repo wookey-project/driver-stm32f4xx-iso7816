@@ -130,8 +130,7 @@ void exti_handler(uint8_t irq __attribute__((unused)),
 	platform_SC_gpio_smartcard_contact_changed = 1;
 	if(user_handler_action != NULL){
 		/* Sanity check our handler */
-		if(handler_sanity_check((void*)user_handler_action)){
-			sys_exit();
+		if(handler_sanity_check_with_panic((physaddr_t)user_handler_action)){
 			return;
 		}
 		else{
