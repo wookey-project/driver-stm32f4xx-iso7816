@@ -324,7 +324,7 @@ uint8_t platform_is_smartcard_inserted(void)
                 sys_get_systick(&local_count, PREC_MICRO);
             } while (((local_count - count) / 1000) < 100);
 
-            ret = sys_cfg(CFG_GPIO_GET, 
+            ret = sys_cfg(CFG_GPIO_GET,
                   (uint8_t)((smartcard_dev_infos.gpios[SMARTCARD_CON].port << 4 )
                             + smartcard_dev_infos.gpios[SMARTCARD_CON].pin), &val);
             if (ret != SYS_E_DONE) {
@@ -333,7 +333,7 @@ uint8_t platform_is_smartcard_inserted(void)
             }
             if (!val) {
                 /* toggle led on */
-                ret = sys_cfg(CFG_GPIO_SET, 
+                ret = sys_cfg(CFG_GPIO_SET,
                   (uint8_t)((smartcard_dev_infos.gpios[LED0].port << 4 )
                            + smartcard_dev_infos.gpios[LED0].pin)
                                                  ,1);
@@ -350,7 +350,7 @@ uint8_t platform_is_smartcard_inserted(void)
                   log_printf("Unable to toggle LED0, ret %s\n", strerror(ret));
                   return 0;
                 }
-                
+
             }
             platform_SC_gpio_smartcard_contact_changed = 0;
             platform_SC_is_smartcard_inserted = !val;
@@ -509,7 +509,7 @@ static uint8_t received_SC_bytes[64];
 volatile unsigned int received_SC_bytes_start = 0;
 volatile unsigned int received_SC_bytes_end   = 0;
 /* The mutex for handling the reception ring buffer between ISR and main thread */
-static volatile uint32_t SC_mutex;
+static uint32_t SC_mutex;
 
 volatile unsigned int received = 0;
 
